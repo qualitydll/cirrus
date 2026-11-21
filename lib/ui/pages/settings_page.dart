@@ -105,7 +105,7 @@ class SettingsPage extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               title: const Text('Системный прокси'),
               subtitle: const Text(
-                'Браузеры и большинство программ пойдут через brew',
+                'Браузеры и большинство программ пойдут через Cirrus',
               ),
               value: s.systemProxy,
               onChanged: state.setSystemProxy,
@@ -367,13 +367,13 @@ class SettingsPage extends StatelessWidget {
           ListTile(
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.science_outlined),
-            title: const Text('Brew Network Lab'),
+            title: const Text('Cirrus Network Lab'),
             subtitle: const Text('Адаптивная диагностика доступности, задержки и маршрута'),
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => Scaffold(
-                  appBar: AppBar(title: const Text('Brew Network Lab')),
+                  appBar: AppBar(title: const Text('Cirrus Network Lab')),
                   body: const SafeArea(
                     child: ExperimentLabPage(showHeader: false),
                   ),
@@ -390,7 +390,7 @@ class SettingsPage extends StatelessWidget {
         title: 'О программе',
         children: [
           Text(
-            'brew 0.1.2 — VPN-клиент на базе mihomo с дизайном Material You.',
+            'Cirrus 0.1.2 — VPN-клиент на базе mihomo с дизайном Material You.',
           ),
         ],
       ),

@@ -1,5 +1,5 @@
-name: brew
-description: "A minimalist VPN client for Windows and Android."
+name: cirrus
+description: "Cirrus — a minimalist VPN client for Windows and Android."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -47,6 +47,8 @@ dependencies:
   tray_manager: ^0.5.3
   # QR-сканер подписок (используется только на Android).
   mobile_scanner: ^7.0.1
+  # SSH/SFTP-клиент для автономного развёртывания Aegis на VPS.
+  dartssh2: ^4.1.0
 
 dev_dependencies:
   flutter_test:
@@ -66,9 +68,11 @@ dev_dependencies:
 flutter:
 
   assets:
-    - assets/images/brewicon.jpg
-    - assets/images/brew_logo.png
-    - brewicon.png
+    - assets/images/cirrus_icon.jpg
+    - assets/images/cirrus_logo.png
+    - cirrus_icon.png
+    - aegis/install.sh
+    - aegis/aegis_panel.py
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

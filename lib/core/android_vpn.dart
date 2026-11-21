@@ -8,7 +8,7 @@ class AndroidVpn {
     this.validationTimeout = const Duration(seconds: 20),
     this.startTimeout = const Duration(seconds: 40),
     this.stopTimeout = const Duration(seconds: 10),
-  }) : _channel = channel ?? const MethodChannel('dev.brew.brew/vpn');
+  }) : _channel = channel ?? const MethodChannel('dev.cirrus.app/vpn');
 
   final MethodChannel _channel;
   final Duration validationTimeout;

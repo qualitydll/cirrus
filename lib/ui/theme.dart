@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 
 import '../brand.dart';
 
-/// Material You scheme; the default brew orange gets a coffee-brown tertiary.
-ColorScheme brewScheme(Color seed, Brightness b, DynamicSchemeVariant v) {
+/// Material You scheme; the default Cirrus green gets a coffee-brown tertiary.
+ColorScheme cirrusScheme(Color seed, Brightness b, DynamicSchemeVariant v) {
   final s = ColorScheme.fromSeed(
     seedColor: seed,
     brightness: b,
     dynamicSchemeVariant: v,
   );
-  if (seed.toARGB32() != kBrewOrange.toARGB32()) return s;
+  if (seed.toARGB32() != kCirrusGreen.toARGB32()) return s;
   final c = ColorScheme.fromSeed(
-    seedColor: kBrewCoffee,
+    seedColor: kCoffee,
     brightness: b,
     dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
   );
@@ -89,9 +89,10 @@ ThemeData buildTheme(ColorScheme scheme) {
 }
 
 const seedPalette = <Color>[
-  kBrewOrange,
-  kBrewCoffee,
-  kBrewCaramel,
+  kCirrusGreen,
+  kOrange,
+  kCoffee,
+  kCaramel,
   Color(0xFFB3261E),
   Color(0xFF984061),
   Color(0xFF6750A4),

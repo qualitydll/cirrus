@@ -1,5 +1,5 @@
-import 'package:brew/core/link_parser.dart';
-import 'package:brew/core/routing_rules.dart';
+import 'package:cirrus/core/link_parser.dart';
+import 'package:cirrus/core/routing_rules.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

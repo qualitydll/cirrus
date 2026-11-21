@@ -1,6 +1,6 @@
-import 'package:brew/state/app_state.dart';
-import 'package:brew/state/models.dart';
-import 'package:brew/ui/pages/logs_page.dart';
+import 'package:cirrus/state/app_state.dart';
+import 'package:cirrus/state/models.dart';
+import 'package:cirrus/ui/pages/logs_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 

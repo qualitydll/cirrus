@@ -1,5 +1,5 @@
-import 'package:brew/core/config_builder.dart';
-import 'package:brew/core/link_parser.dart';
+import 'package:cirrus/core/config_builder.dart';
+import 'package:cirrus/core/link_parser.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

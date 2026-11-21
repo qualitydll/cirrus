@@ -135,7 +135,7 @@ class _ProxyOverview extends StatelessWidget {
                 onPressed: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => Scaffold(
-                      appBar: AppBar(title: const Text('Brew Network Lab')),
+                      appBar: AppBar(title: const Text('Cirrus Network Lab')),
                       body: const SafeArea(child: ExperimentLabPage(showHeader: false)),
                     ),
                   ),

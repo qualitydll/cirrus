@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../state/app_state.dart';
 import '../../state/models.dart';
 import '../widgets/common.dart';
+import 'aegis_deploy_dialog.dart';
 import 'qr_scan_page.dart';
 
 class ProfilesPage extends StatelessWidget {
@@ -19,7 +20,7 @@ class ProfilesPage extends StatelessWidget {
       children: [
         PageHeader(
           title: 'Подписки',
-          subtitle: 'Ссылки на подписку, Clash YAML или ключи vless / vmess / trojan / ss / hy2 / tuic',
+          subtitle: 'Ссылки на подписку, Clash YAML или ключи aegis / vless / vmess / trojan / ss / hy2 / tuic',
           actions: [
             FilledButton.icon(
               onPressed: () => showAddProfileDialog(context),
@@ -273,31 +274,29 @@ Future<String?> _prompt(BuildContext context, String title, String initial) {
   );
 }
 
-/// Entry point for the "Добавить" button. On Android, asks whether the user
-/// wants to scan a QR code or paste a link/key first; everywhere else there
-/// is no camera to scan with, so it opens the paste dialog directly.
+/// Entry point for the "Добавить" button: QR scan (Android), paste a
+/// link/key, or deploy Aegis onto your own VPS over SSH.
 Future<void> showAddProfileDialog(BuildContext context) async {
-  if (!Platform.isAndroid) {
-    await _showAddDialog(context);
-    return;
-  }
   final method = await showModalBottomSheet<_AddMethod>(
     context: context,
     showDragHandle: true,
-    builder: (context) => const _AddMethodSheet(),
+    builder: (context) => _AddMethodSheet(showQr: Platform.isAndroid),
   );
   if (method == null || !context.mounted) return;
 
-  if (method == _AddMethod.link) {
-    await _showAddDialog(context);
+  if (method == _AddMethod.vps) {
+    await showAegisDeployDialog(context);
     return;
   }
-
-  final scanned = await Navigator.of(
-    context,
-  ).push<String>(MaterialPageRoute(builder: (_) => const QrScanPage()));
-  if (scanned == null || !context.mounted) return;
-  await _showAddDialog(context, initialInput: scanned);
+  if (method == _AddMethod.qr) {
+    final scanned = await Navigator.of(
+      context,
+    ).push<String>(MaterialPageRoute(builder: (_) => const QrScanPage()));
+    if (scanned == null || !context.mounted) return;
+    await _showAddDialog(context, initialInput: scanned);
+    return;
+  }
+  await _showAddDialog(context);
 }
 
 Future<void> _showAddDialog(BuildContext context, {String? initialInput}) {
@@ -324,10 +323,13 @@ Future<void> _showAddDialog(BuildContext context, {String? initialInput}) {
   );
 }
 
-enum _AddMethod { qr, link }
+enum _AddMethod { qr, link, vps }
 
 class _AddMethodSheet extends StatelessWidget {
-  const _AddMethodSheet();
+  const _AddMethodSheet({required this.showQr});
+
+  /// QR scanning is only wired up on Android (mobile_scanner).
+  final bool showQr;
 
   @override
   Widget build(BuildContext context) {
@@ -344,16 +346,17 @@ class _AddMethodSheet extends StatelessWidget {
               style: Theme.of(context).textTheme.titleMedium,
             ),
           ),
-          ListTile(
-            leading: CircleAvatar(
-              backgroundColor: scheme.primaryContainer,
-              foregroundColor: scheme.onPrimaryContainer,
-              child: const Icon(Icons.qr_code_scanner_rounded),
+          if (showQr)
+            ListTile(
+              leading: CircleAvatar(
+                backgroundColor: scheme.primaryContainer,
+                foregroundColor: scheme.onPrimaryContainer,
+                child: const Icon(Icons.qr_code_scanner_rounded),
+              ),
+              title: const Text('Сканировать QR-код'),
+              subtitle: const Text('Камерой — код от вашего VPN-провайдера'),
+              onTap: () => Navigator.pop(context, _AddMethod.qr),
             ),
-            title: const Text('Сканировать QR-код'),
-            subtitle: const Text('Камерой — код от вашего VPN-провайдера'),
-            onTap: () => Navigator.pop(context, _AddMethod.qr),
-          ),
           ListTile(
             leading: CircleAvatar(
               backgroundColor: scheme.secondaryContainer,
@@ -362,9 +365,21 @@ class _AddMethodSheet extends StatelessWidget {
             ),
             title: const Text('Вставить ссылку или ключ'),
             subtitle: const Text(
-              'Подписка, vless / vmess / trojan / ss / hy2 / tuic',
+              'Подписка, aegis / vless / vmess / trojan / ss / hy2 / tuic',
             ),
             onTap: () => Navigator.pop(context, _AddMethod.link),
+          ),
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF0C4A6E),
+              foregroundColor: const Color(0xFF7DD3FC),
+              child: const Icon(Icons.dns_rounded),
+            ),
+            title: const Text('Развернуть Aegis на VPS'),
+            subtitle: const Text(
+              'SSH-доступ к серверу — приложение всё установит само',
+            ),
+            onTap: () => Navigator.pop(context, _AddMethod.vps),
           ),
           const SizedBox(height: 8),
         ],

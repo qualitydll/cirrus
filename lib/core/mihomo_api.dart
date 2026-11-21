@@ -13,7 +13,7 @@ class MihomoApi {
   final int port;
   final String secret;
   final http.Client _client = http.Client();
-  static const MethodChannel _native = MethodChannel('dev.brew.brew/vpn');
+  static const MethodChannel _native = MethodChannel('dev.cirrus.app/vpn');
   bool get _useNativeBridge => Platform.isAndroid;
 
   Future<dynamic> _androidAction(String method, [String? data]) async {

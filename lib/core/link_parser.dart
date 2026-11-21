@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:yaml/yaml.dart';
 
+import 'aegis.dart';
+
 /// Result of parsing subscription content.
 class ParsedSubscription {
   ParsedSubscription({this.clashConfig, this.proxies = const []});
@@ -160,6 +162,8 @@ Map<String, dynamic>? parseLink(String link) {
       return _parseAnyTls(link);
     case 'shadowquic':
       return _parseShadowQuic(link);
+    case 'aegis':
+      return _parseAegis(link);
   }
   return null;
 }
@@ -516,6 +520,103 @@ Map<String, dynamic>? _parseShadowQuic(String link) {
   if (_truthy(q['udp-over-stream'])) p['udp-over-stream'] = true;
   if (_truthy(q['zero-rtt'])) p['zero-rtt'] = true;
   return p;
+}
+
+/// Parses an Aegis share URI into a Mihomo outbound.
+///
+/// Format: `aegis://<preset>.<auth>@<host>:<port>?<params>#<name>`
+/// where `<preset>` is one of [aegisPresets] and `<auth>` is the node
+/// password (turbo) or UUID (eco/cfws/cfgrpc). The preset expands into the
+/// matching hysteria2/vless link and is delegated to the stock parsers.
+Map<String, dynamic>? _parseAegis(String link) {
+  final Uri uri;
+  try {
+    uri = Uri.parse(link);
+  } catch (_) {
+    return null;
+  }
+  final userInfo = uri.userInfo;
+  final dot = userInfo.indexOf('.');
+  if (dot <= 0 || dot == userInfo.length - 1) return null;
+  final preset = userInfo.substring(0, dot);
+  final auth = userInfo.substring(dot + 1);
+  if (!aegisPresets.containsKey(preset) || uri.host.isEmpty) return null;
+
+  final q = uri.queryParameters;
+  final port = uri.hasPort ? uri.port : 443;
+  final hostPort = '${uri.host}:$port';
+
+  String inner;
+  switch (preset) {
+    case 'turbo':
+      inner = 'hy2://${Uri.encodeComponent(auth)}@$hostPort?'
+          '${_forwardParams(q, const [
+            'sni',
+            'alpn',
+            'obfs',
+            'obfs-password',
+            'obfs_password',
+            'mport',
+            'ports',
+            'insecure',
+          ])}';
+    case 'eco':
+      inner = 'vless://${Uri.encodeComponent(auth)}@$hostPort?'
+          'security=reality&'
+          '${_forwardParams(q, const [
+            'sni',
+            'peer',
+            'pbk',
+            'sid',
+            'fp',
+            'alpn',
+            'allowInsecure',
+            'insecure',
+          ])}';
+    case 'cfws':
+    case 'cfgrpc':
+      final type = preset == 'cfws' ? 'ws' : 'grpc';
+      inner = 'vless://${Uri.encodeComponent(auth)}@$hostPort?'
+          'security=tls&type=$type&'
+          '${_forwardParams(q, const [
+            'sni',
+            'peer',
+            'path',
+            'host',
+            'serviceName',
+            'service_name',
+            'alpn',
+            'fp',
+            'allowInsecure',
+            'insecure',
+          ])}';
+    default:
+      return null;
+  }
+
+  final proxy = preset == 'turbo'
+      ? _parseHysteria2(inner)
+      : _parseVless(inner);
+  if (proxy == null) return null;
+  proxy['name'] = aegisNodeName(
+    preset,
+    _fragment(uri),
+    uri.host,
+  );
+  return proxy;
+}
+
+/// Copies whitelisted query params into `key=value&...` form.
+String _forwardParams(Map<String, String> q, List<String> keys) {
+  final parts = <String>[];
+  for (final key in keys) {
+    final value = q[key];
+    if (value != null && value.isNotEmpty) {
+      parts.add('${Uri.encodeQueryComponent(key)}='
+          '${Uri.encodeQueryComponent(value)}');
+    }
+  }
+  return parts.join('&');
 }
 
 /// Parses an AnyTLS share URI into Mihomo's outbound schema.

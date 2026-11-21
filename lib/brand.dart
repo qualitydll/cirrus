@@ -1,11 +1,13 @@
 import 'package:flutter/painting.dart';
 
-const kAppName = 'brew';
+const kAppName = 'Cirrus';
 const kAppVersion = '0.1.2';
 
-const kBrewOrange = Color(0xFFF2711C);
-const kBrewCoffee = Color(0xFF6F4E37);
-const kBrewCaramel = Color(0xFFD99A3E);
+/// Warm dark green — the default Cirrus accent.
+const kCirrusGreen = Color(0xFF2E7D4F);
+const kOrange = Color(0xFFF2711C);
+const kCoffee = Color(0xFF6F4E37);
+const kCaramel = Color(0xFFD99A3E);
 
 const kBrandFont = 'DM Sans';
 

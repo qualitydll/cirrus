@@ -273,7 +273,7 @@ class AppState extends ChangeNotifier {
       final res = await client
           .get(
             Uri.parse(url),
-            headers: {'User-Agent': 'clash.meta/mihomo brew/0.1'},
+            headers: {'User-Agent': 'clash.meta/mihomo cirrus/0.1'},
           )
           .timeout(const Duration(seconds: 20));
       if (res.statusCode >= 400) {

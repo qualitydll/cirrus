@@ -1,4 +1,4 @@
-import 'package:brew/state/models.dart';
+import 'package:cirrus/state/models.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {

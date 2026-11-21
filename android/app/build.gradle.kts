@@ -37,7 +37,7 @@ val downloadMihomoAndroid by tasks.registering {
 }
 
 android {
-    namespace = "dev.brew.brew"
+    namespace = "dev.cirrus.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -47,7 +47,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "dev.brew.brew"
+        applicationId = "dev.cirrus.app"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

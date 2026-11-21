@@ -7,11 +7,11 @@ import zipfile
 from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
-ICON_ARCHIVE = ROOT / "Brew_Icons_Windows_Android.zip"
+ICON_ARCHIVE = ROOT / "Cirrus_Icons_Windows_Android.zip"
 ASSET_DIR = ROOT / "assets" / "images"
 # Prefer the original source file when present, but the optimized logo is
 # already tracked in the repository and is a valid fallback for clean CI runs.
-SOURCE_CANDIDATES = (ROOT / "brewicon.png", ASSET_DIR / "brew_logo.png")
+SOURCE_CANDIDATES = (ROOT / "icon.png", ASSET_DIR / "cirrus_logo.png")
 ANDROID_RES = ROOT / "android" / "app" / "src" / "main" / "res"
 WINDOWS_ICON = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
 ANDROID_SIZES = {
@@ -112,17 +112,17 @@ def main() -> None:
     # Flutter image memory. The uploaded archive remains untouched in git.
     app_art = fit(source, 512, 0.94)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
-    app_art.save(ASSET_DIR / "brew_logo.png", format="PNG", optimize=True)
-    app_art.save(ROOT / "brewicon.png", format="PNG", optimize=True)
+    app_art.save(ASSET_DIR / "cirrus_logo.png", format="PNG", optimize=True)
+    app_art.save(ROOT / "cirrus_icon.png", format="PNG", optimize=True)
 
     android_nodpi = ANDROID_RES / "drawable-nodpi"
     android_nodpi.mkdir(parents=True, exist_ok=True)
-    app_art.save(android_nodpi / "brewicon.png", format="PNG", optimize=True)
+    app_art.save(android_nodpi / "cirrus_icon.png", format="PNG", optimize=True)
 
     foreground_dir = ANDROID_RES / "drawable"
     foreground_dir.mkdir(parents=True, exist_ok=True)
     fit(source, 432, 0.68).save(
-        foreground_dir / "ic_brew_foreground_image.png", format="PNG", optimize=True
+        foreground_dir / "ic_cirrus_foreground_image.png", format="PNG", optimize=True
     )
 
     for folder, size in ANDROID_SIZES.items():
@@ -153,7 +153,7 @@ def main() -> None:
         )
         print("Windows EXE icon: generated multi-size ICO from supplied artwork")
 
-    print("Generated optimized Brew assets; VPN/core files were not modified.")
+    print("Generated optimized Cirrus assets; VPN/core files were not modified.")
 
 
 if __name__ == "__main__":

@@ -164,7 +164,7 @@ class _ExperimentLabPageState extends State<ExperimentLabPage> {
       children: [
         if (widget.showHeader)
           PageHeader(
-            title: 'Brew Network Lab',
+            title: 'Cirrus Network Lab',
             subtitle: 'Адаптивная диагностика сети, прокси и маршрутов',
           ),
         const SizedBox(height: 8),
@@ -281,7 +281,7 @@ class _ExperimentLabPageState extends State<ExperimentLabPage> {
           child: const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
-              'Adaptive Network — экспериментальный слой диагностики Brew. Он помогает понять, на каком этапе возникает проблема, и выбрать узел по штатному тесту Mihomo. Результат проверки не гарантирует доступность каждого сайта; автоматическая смена конфигурации ядра отключена, чтобы не ломать профиль провайдера.',
+              'Adaptive Network — экспериментальный слой диагностики Cirrus. Он помогает понять, на каком этапе возникает проблема, и выбрать узел по штатному тесту Mihomo. Результат проверки не гарантирует доступность каждого сайта; автоматическая смена конфигурации ядра отключена, чтобы не ломать профиль провайдера.',
             ),
           ),
         ),

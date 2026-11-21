@@ -161,7 +161,7 @@ class _Logo extends StatelessWidget {
         ),
       ),
       child: Image.asset(
-        'brewicon.png',
+        'cirrus_icon.png',
         fit: BoxFit.contain,
         alignment: Alignment.center,
         filterQuality: FilterQuality.high,

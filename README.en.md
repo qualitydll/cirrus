@@ -1,10 +1,10 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/qualitydll/brew-client-/main/brewbanner.png" alt="brew. — project banner" width="100%" />
+<img src="https://raw.githubusercontent.com/qualitydll/cirrus-client-/main/cirrusbanner.png" alt="Cirrus. — project banner" width="100%" />
 
-# brew.
+# Cirrus.
 
-**A minimalist VPN client for Windows and Android, with Brew’s own visual identity**
+**A minimalist VPN client for Windows and Android, with Cirrus's own visual identity**
 
 [🇷🇺 Русский](README.md) · [🇬🇧 English](README.en.md)
 
@@ -16,9 +16,9 @@ Powered by [Flutter](https://flutter.dev) and [Mihomo](https://github.com/MetaCu
 
 ## About
 
-**brew.** is a compact VPN client with its own visual identity, profile management, and straightforward connection controls. The project uses Flutter for its UI and Mihomo as its networking core.
+**Cirrus.** is a compact VPN client with its own visual identity, profile management, and straightforward connection controls. The project uses Flutter for its UI and Mihomo as its networking core.
 
-> brew. is under active development. Features and compatibility may change.
+> Cirrus. is under active development. Features and compatibility may change.
 
 ## Features
 
@@ -42,7 +42,7 @@ A successful CI build does not replace testing on a real device and does not gua
 
 ## Download
 
-1. Open [GitHub Actions](https://github.com/qualitydll/brew-client-/actions/workflows/build.yml).
+1. Open [GitHub Actions](https://github.com/qualitydll/cirrus-client-/actions/workflows/build.yml).
 2. Select a successful build run.
 3. Find **Artifacts** near the bottom of the run page.
 4. Download <code>android-release-arm64</code> or <code>windows-release</code>.
@@ -51,7 +51,7 @@ A successful CI build does not replace testing on a real device and does not gua
 
 1. Download the APK from a successful workflow artifact.
 2. Install it on a compatible 64-bit ARM Android device.
-3. Open brew. and add your VPN subscription URL.
+3. Open Cirrus. and add your VPN subscription URL.
 4. Tap connect and approve Android's VPN permission prompt.
 
 The current Android build uses the embedded Mihomo core and Android's <code>VpnService</code>. sing-box is not the embedded core in the current project configuration.
@@ -102,13 +102,13 @@ flutter run -d windows</code></pre>
 
 ## Contributing
 
-Found a bug or have an idea? Open an [Issue](https://github.com/qualitydll/brew-client-/issues). Include the platform, reproduction steps, and error message, after removing secrets from logs.
+Found a bug or have an idea? Open an [Issue](https://github.com/qualitydll/cirrus-client-/issues). Include the platform, reproduction steps, and error message, after removing secrets from logs.
 
 ---
 
 <div align="center">
 
-**brew. — less noise. more connection.**
+**Cirrus. — less noise. more connection.**
 
 [🇷🇺 Читать на русском](README.md)
 

@@ -10,7 +10,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:label="brew"
+        android:label="Cirrus"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true">
@@ -55,7 +55,7 @@
             android:name=".VpnTileService"
             android:exported="true"
             android:icon="@mipmap/ic_launcher"
-            android:label="brew VPN"
+            android:label="Cirrus VPN"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "dev.brew" "\0"
-            VALUE "FileDescription", "brew" "\0"
+            VALUE "CompanyName", "dev.cirrus" "\0"
+            VALUE "FileDescription", "Cirrus" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "brew" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 dev.brew. All rights reserved." "\0"
-            VALUE "OriginalFilename", "brew.exe" "\0"
-            VALUE "ProductName", "brew" "\0"
+            VALUE "InternalName", "cirrus" "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 dev.cirrus. All rights reserved." "\0"
+            VALUE "OriginalFilename", "cirrus.exe" "\0"
+            VALUE "ProductName", "Cirrus" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

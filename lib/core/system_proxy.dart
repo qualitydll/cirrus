@@ -42,7 +42,7 @@ class SystemProxy {
 Set-ItemProperty -Path \$k -Name ProxyEnable -Value ${on ? 1 : 0}
 ${on ? "Set-ItemProperty -Path \$k -Name ProxyServer -Value '127.0.0.1:$port'\nSet-ItemProperty -Path \$k -Name ProxyOverride -Value '$_bypass'" : ''}
 \$sig = '[DllImport("wininet.dll", SetLastError = true)] public static extern bool InternetSetOption(System.IntPtr h, int o, System.IntPtr b, int l);'
-\$t = Add-Type -MemberDefinition \$sig -Name WinInet -Namespace Brew -PassThru
+\$t = Add-Type -MemberDefinition \$sig -Name WinInet -Namespace Cirrus -PassThru
 [void]\$t::InternetSetOption([System.IntPtr]::Zero, 39, [System.IntPtr]::Zero, 0)
 [void]\$t::InternetSetOption([System.IntPtr]::Zero, 37, [System.IntPtr]::Zero, 0)
 ''';

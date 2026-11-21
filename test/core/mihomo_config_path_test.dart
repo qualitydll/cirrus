@@ -1,12 +1,12 @@
 import 'dart:io';
 
-import 'package:brew/core/mihomo_config_path.dart';
+import 'package:cirrus/core/mihomo_config_path.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
   test('prepares config.yaml in the service home directory', () async {
-    final dataDirectory = await Directory.systemTemp.createTemp('brew-mihomo-');
+    final dataDirectory = await Directory.systemTemp.createTemp('cirrus-mihomo-');
     addTearDown(() => dataDirectory.delete(recursive: true));
 
     final home = mihomoHomeDirectory(dataDirectory.path);

@@ -55,7 +55,7 @@ Future<void> main() async {
     windowManager.addListener(closeHandler);
   }
 
-  runApp(BrewApp(state: state));
+  runApp(CirrusApp(state: state));
 }
 
 class _CloseHandler with WindowListener, tray.TrayListener {
@@ -68,7 +68,7 @@ class _CloseHandler with WindowListener, tray.TrayListener {
   Future<void> initializeTray() async {
     final executableDirectory = File(Platform.resolvedExecutable).parent.path;
     final candidates = <String>[
-      p.join(executableDirectory, 'brew_tray.ico'),
+      p.join(executableDirectory, 'cirrus_tray.ico'),
       p.join(executableDirectory, 'resources', 'app_icon.ico'),
       p.join(Directory.current.path, 'windows', 'runner', 'resources', 'app_icon.ico'),
     ];
@@ -82,11 +82,11 @@ class _CloseHandler with WindowListener, tray.TrayListener {
     if (iconPath == null) return;
 
     await tray.trayManager.setIcon(iconPath);
-    await tray.trayManager.setToolTip('brew — VPN');
+    await tray.trayManager.setToolTip('Cirrus — VPN');
     await tray.trayManager.setContextMenu(
       tray.Menu(
         items: [
-          tray.MenuItem(key: 'show_window', label: 'Открыть brew'),
+          tray.MenuItem(key: 'show_window', label: 'Открыть Cirrus'),
           tray.MenuItem.separator(),
           tray.MenuItem(key: 'exit_app', label: 'Полностью выйти'),
         ],
@@ -168,8 +168,8 @@ class _CloseHandler with WindowListener, tray.TrayListener {
   }
 }
 
-class BrewApp extends StatelessWidget {
-  const BrewApp({super.key, required this.state});
+class CirrusApp extends StatelessWidget {
+  const CirrusApp({super.key, required this.state});
 
   final AppState state;
 
@@ -183,10 +183,10 @@ class BrewApp extends StatelessWidget {
           builder: (lightDynamic, darkDynamic) {
             final s = state.settings;
             final seed = s.systemColor
-                ? lightDynamic?.primary ?? kBrewOrange
+                ? lightDynamic?.primary ?? kCirrusGreen
                 : s.seedColor;
             ColorScheme scheme(Brightness b) =>
-                brewScheme(seed, b, s.schemeVariant);
+                cirrusScheme(seed, b, s.schemeVariant);
             return MaterialApp(
               title: kAppName,
               debugShowCheckedModeBanner: false,
@@ -230,7 +230,7 @@ class _AndroidBootstrapState extends State<_AndroidBootstrap> {
       if (!mounted) return;
       setState(() => _ready = true);
     } catch (error, stack) {
-      debugPrint('Brew Android startup failed: $error\n$stack');
+      debugPrint('Cirrus Android startup failed: $error\n$stack');
       if (!mounted) return;
       setState(() => _error = error);
     }
@@ -238,14 +238,14 @@ class _AndroidBootstrapState extends State<_AndroidBootstrap> {
 
   @override
   Widget build(BuildContext context) {
-    if (_ready) return BrewApp(state: widget.state);
+    if (_ready) return CirrusApp(state: widget.state);
 
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: kBrewOrange,
+          seedColor: kCirrusGreen,
           brightness: Brightness.dark,
         ),
       ),
@@ -261,7 +261,7 @@ class _AndroidBootstrapState extends State<_AndroidBootstrap> {
                       children: [
                         CircularProgressIndicator(),
                         SizedBox(height: 20),
-                        Text('Запускаем Brew…'),
+                        Text('Запускаем Cirrus…'),
                       ],
                     )
                   : Column(
@@ -270,7 +270,7 @@ class _AndroidBootstrapState extends State<_AndroidBootstrap> {
                         const Icon(Icons.error_outline_rounded, size: 42),
                         const SizedBox(height: 16),
                         const Text(
-                          'Не удалось запустить Brew',
+                          'Не удалось запустить Cirrus',
                           style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                           textAlign: TextAlign.center,
                         ),

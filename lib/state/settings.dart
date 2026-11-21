@@ -19,7 +19,7 @@ class Settings {
 
   Color get seedColor {
     final v = _prefs.getInt('seedColor');
-    return v == null ? kBrewOrange : Color(v);
+    return v == null ? kCirrusGreen : Color(v);
   }
 
   set seedColor(Color c) => _prefs.setInt('seedColor', c.toARGB32());

@@ -216,6 +216,7 @@ String timeAgo(DateTime t) {
 }
 
 String proxyTypeLabel(String type) => switch (type.toLowerCase()) {
+  'aegis' => 'Aegis',
   'vless' => 'VLESS',
   'vmess' => 'VMess',
   'trojan' => 'Trojan',

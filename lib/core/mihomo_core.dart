@@ -23,8 +23,8 @@ class MihomoCore {
   }) async {
     final candidates = <String>[
       if (customPath != null && customPath.isNotEmpty) customPath,
-      if (Platform.environment['BREW_CORE'] != null)
-        Platform.environment['BREW_CORE']!,
+      if (Platform.environment['CIRRUS_CORE'] != null)
+        Platform.environment['CIRRUS_CORE']!,
       // Check core folder next to executable first (where we bundled mihomo.exe)
       p.join(p.dirname(Platform.resolvedExecutable), 'core', binaryName),
       p.join(p.dirname(Platform.resolvedExecutable), binaryName),

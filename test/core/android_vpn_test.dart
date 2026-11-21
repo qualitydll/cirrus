@@ -8,7 +8,7 @@ import '../../lib/core/android_vpn.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  const channel = MethodChannel('test/dev.brew.brew/vpn');
+  const channel = MethodChannel('test/dev.cirrus.app/vpn');
   final messenger =
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
 

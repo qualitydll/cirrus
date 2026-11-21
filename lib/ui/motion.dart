@@ -3,9 +3,9 @@ import 'dart:io';
 
 import 'package:flutter/widgets.dart';
 
-/// Debug switch for isolating animation cost: BREW_NO_ANIM=aurora,orb,chart|all
+/// Debug switch for isolating animation cost: CIRRUS_NO_ANIM=aurora,orb,chart|all
 class Motion {
-  static final _off = (Platform.environment['BREW_NO_ANIM'] ?? '')
+  static final _off = (Platform.environment['CIRRUS_NO_ANIM'] ?? '')
       .split(',')
       .map((e) => e.trim())
       .toSet();
