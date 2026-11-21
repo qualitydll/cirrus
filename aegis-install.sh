@@ -7,8 +7,34 @@ AEGIS_DIR="/opt/aegis"
 AEGIS_BIN="$AEGIS_DIR/aegis"
 AEGIS_PORT=8443
 AEGIS_SECRET=""
+AEGIS_TRANSPORT="tcp"
+AEGIS_FEC="false"
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --port)
+            AEGIS_PORT="$2"
+            shift 2
+            ;;
+        --transport)
+            AEGIS_TRANSPORT="$2"
+            shift 2
+            ;;
+        --fec)
+            AEGIS_FEC="true"
+            shift
+            ;;
+        *)
+            echo "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
 
 echo "=== AEGIS Server Installer ==="
+echo "Transport: $AEGIS_TRANSPORT"
+echo "FEC: $AEGIS_FEC"
 echo "Installing AEGIS daemon..."
 
 # Detect OS
@@ -61,12 +87,12 @@ fi
 if command -v systemctl &> /dev/null; then
     cat > /etc/systemd/system/aegis.service <<EOF
 [Unit]
-Description=AEGIS VPN Server
+Description=AEGIS VPN Server ($AEGIS_TRANSPORT)
 After=network.target
 
 [Service]
 Type=simple
-ExecStart=$AEGIS_BIN server -listen :$AEGIS_PORT -secret $AEGIS_SECRET
+ExecStart=$AEGIS_BIN server -listen :$AEGIS_PORT -secret $AEGIS_SECRET -transport $AEGIS_TRANSPORT $(if [ "$AEGIS_FEC" = "true" ]; then echo "-fec"; fi)
 Restart=always
 RestartSec=5
 User=root
@@ -78,10 +104,10 @@ EOF
     systemctl daemon-reload
     systemctl enable aegis
     systemctl start aegis
-    echo "AEGIS service started on port $AEGIS_PORT"
+    echo "AEGIS service started on port $AEGIS_PORT ($AEGIS_TRANSPORT)"
 else
     echo "systemd not found, starting manually..."
-    nohup "$AEGIS_BIN" server -listen :$AEGIS_PORT -secret "$AEGIS_SECRET" > /var/log/aegis.log 2>&1 &
+    nohup "$AEGIS_BIN" server -listen :$AEGIS_PORT -secret "$AEGIS_SECRET" -transport "$AEGIS_TRANSPORT" $(if [ "$AEGIS_FEC" = "true" ]; then echo "-fec"; fi) > /var/log/aegis.log 2>&1 &
     echo "AEGIS started with PID $!"
 fi
 

@@ -28,9 +28,11 @@ class Profile {
   bool hasTrafficInfo;
   bool hasExpiryInfo;
 
-  /// AEGIS native connection config (server, port, secret, listen port).
+  /// AEGIS native connection config (server, port, secret, listen port, transport).
   /// When set, this profile uses our custom AEGIS protocol instead of
   /// parsing share links.
+  /// transport: 'tcp' or 'udp'
+  /// fec: bool (for UDP only)
   Map<String, dynamic>? aegisConfig;
 
   bool get isRemote => url != null;

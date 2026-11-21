@@ -41,6 +41,8 @@ class VpsDeployResult {
 /// returns the server connection details.
 Future<VpsDeployResult> deployAegis(
   VpsCredentials creds, {
+  String transport = 'tcp',
+  bool fec = false,
   void Function(String line)? onLog,
   Duration timeout = const Duration(minutes: 6),
 }) async {
@@ -106,9 +108,19 @@ Future<VpsDeployResult> deployAegis(
       throw Exception('chmod failed: ${utf8.decode(chmod.stderr)}');
     }
 
+    // Build installer command with transport and FEC options
+    final installCmd = StringBuffer('bash /tmp/aegis_deploy/aegis-install.sh');
+    if (transport != 'tcp') {
+      installCmd.write(' --transport $transport');
+    }
+    if (fec) {
+      installCmd.write(' --fec');
+    }
+    installCmd.write(' 2>&1');
+
     both('→ running installer (this can take a few minutes) …');
     final result = await client
-        .runWithResult('bash /tmp/aegis_deploy/aegis-install.sh 2>&1')
+        .runWithResult(installCmd.toString())
         .timeout(timeout);
     final out = utf8.decode(result.stdout, allowMalformed: true);
     for (final line in out.split('\n')) {

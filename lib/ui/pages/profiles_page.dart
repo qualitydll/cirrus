@@ -104,22 +104,59 @@ class _Empty extends StatelessWidget {
   }
 }
 
-class _ProfileTile extends StatelessWidget {
+class _ProfileTile extends StatefulWidget {
   const _ProfileTile({required this.profile, required this.active});
   final Profile profile;
   final bool active;
+
+  @override
+  State<_ProfileTile> createState() => _ProfileTileState();
+}
+
+/// Masks sensitive host information for privacy.
+String _maskHost(String host) {
+  if (host.isEmpty || host == 'Локальный список') return host;
+  
+  // Mask IP addresses: 192.168.***.***
+  if (RegExp(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}').hasMatch(host)) {
+    final parts = host.split('.');
+    if (parts.length >= 4) {
+      return '${parts[0]}.${parts[1]}.***.***';
+    }
+  }
+  
+  // Mask domains: keep first part, mask rest
+  if (host.contains('.')) {
+    final parts = host.split('.');
+    if (parts.length >= 2) {
+      return '${parts[0]}.***.${parts.last}';
+    }
+  }
+  
+  // Mask long strings
+  if (host.length > 8) {
+    return '${host.substring(0, 4)}***${host.substring(host.length - 4)}';
+  }
+  
+  return '***';
+}
+
+class _ProfileTileState extends State<_ProfileTile> {
+  bool _showSensitive = false;
 
   @override
   Widget build(BuildContext context) {
     final state = AppScope.read(context);
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
-    final pr = profile;
+    final pr = widget.profile;
+    final active = widget.active;
     final host = pr.isAegisNative
         ? '${pr.aegisConfig?['server']}:${pr.aegisConfig?['port']}'
         : pr.url == null
             ? 'Локальный список'
             : Uri.tryParse(pr.url!)?.host ?? pr.url!;
+    final displayHost = _showSensitive ? host : _maskHost(host);
     return AnimatedContainer(
       duration: const Duration(milliseconds: 450),
       curve: Curves.easeOutCubic,
@@ -170,8 +207,8 @@ class _ProfileTile extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         pr.isAegisNative
-                            ? '$host · AEGIS Native · ${timeAgo(pr.updatedAt)}'
-                            : '$host · ${pr.proxyCount} серверов · ${timeAgo(pr.updatedAt)}',
+                            ? '$displayHost · AEGIS Native · ${timeAgo(pr.updatedAt)}'
+                            : '$displayHost · ${pr.proxyCount} серверов · ${timeAgo(pr.updatedAt)}',
                         style: t.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -213,6 +250,14 @@ class _ProfileTile extends StatelessWidget {
                     },
                     icon: const Icon(Icons.refresh_rounded),
                   ),
+                IconButton(
+                  tooltip: _showSensitive ? 'Скрыть данные' : 'Показать данные',
+                  onPressed: () => setState(() => _showSensitive = !_showSensitive),
+                  icon: Icon(
+                    _showSensitive ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    size: 20,
+                  ),
+                ),
                 PopupMenuButton<String>(
                   onSelected: (v) async {
                     if (v == 'rename') {
@@ -850,6 +895,8 @@ class _AegisNativeDialogState extends State<_AegisNativeDialog> {
   final _listenPort = TextEditingController(text: '1080');
   String? _error;
   bool _busy = false;
+  String _transport = 'tcp';
+  bool _fec = false;
 
   @override
   void dispose() {
@@ -885,6 +932,8 @@ class _AegisNativeDialogState extends State<_AegisNativeDialog> {
         port: port,
         secret: secret,
         listenPort: listenPort,
+        transport: _transport,
+        fec: _fec,
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
@@ -963,6 +1012,38 @@ class _AegisNativeDialogState extends State<_AegisNativeDialog> {
                   hintText: '1080 (SOCKS5 для mihomo)',
                 ),
               ),
+              const SizedBox(height: 12),
+              // Transport selection
+              Text(
+                'Транспорт:',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 6),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'tcp', label: Text('TCP')),
+                  ButtonSegment(value: 'udp', label: Text('UDP + FEC')),
+                ],
+                selected: {_transport},
+                onSelectionChanged: _busy
+                    ? null
+                    : (s) => setState(() => _transport = s.first),
+              ),
+              if (_transport == 'udp') ...[
+                const SizedBox(height: 6),
+                CheckboxListTile(
+                  title: const Text('FEC (Forward Error Correction)'),
+                  subtitle: const Text('Защита от потери пакетов'),
+                  value: _fec,
+                  onChanged: _busy
+                      ? null
+                      : (v) => setState(() => _fec = v ?? false),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ],
               AnimatedSize(
                 duration: const Duration(milliseconds: 250),
                 child: _error == null

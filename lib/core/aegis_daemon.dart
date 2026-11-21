@@ -55,6 +55,8 @@ class AegisDaemon {
     required String serverAddr,
     required String secret,
     int listenPort = 1080,
+    String transport = 'tcp',
+    bool fec = false,
     required String dataDir,
   }) async {
     await stop();
@@ -66,15 +68,19 @@ class AegisDaemon {
       final logFile = File(_logPath!);
       final sink = logFile.openWrite(mode: FileMode.write);
 
-      final proc = await Process.start(binaryPath, [
+      // Build command arguments
+      final args = <String>[
         'client',
-        '-server',
-        serverAddr,
-        '-secret',
-        secret,
-        '-listen',
-        '127.0.0.1:$listenPort',
-      ], workingDirectory: dataDir);
+        '-server', serverAddr,
+        '-secret', secret,
+        '-listen', '127.0.0.1:$listenPort',
+        '-transport', transport,
+      ];
+      if (fec && transport == 'udp') {
+        args.add('-fec');
+      }
+
+      final proc = await Process.start(binaryPath, args, workingDirectory: dataDir);
 
       _process = proc;
 

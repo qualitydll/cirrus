@@ -324,6 +324,8 @@ class AppState extends ChangeNotifier {
     required int port,
     required String secret,
     int listenPort = 1080,
+    String transport = 'tcp',
+    bool fec = false,
   }) async {
     final profile = Profile(
       id: newId(),
@@ -335,6 +337,8 @@ class AppState extends ChangeNotifier {
         'port': port,
         'secret': secret,
         'listenPort': listenPort,
+        'transport': transport,
+        'fec': fec,
       },
     );
     profiles.add(profile);
@@ -544,12 +548,17 @@ class AppState extends ChangeNotifier {
           throw Exception('AEGIS daemon not found. Please place aegis binary in data directory.');
         }
         
-        logs.add(LogEntry('info', 'Starting AEGIS daemon on port $listenPort...'));
+        final transport = aegisCfg['transport'] as String? ?? 'tcp';
+        final fec = aegisCfg['fec'] as bool? ?? false;
+        
+        logs.add(LogEntry('info', 'Starting AEGIS daemon on port $listenPort ($transport)...'));
         final started = await aegisDaemon.start(
           binaryPath: aegisBinary,
           serverAddr: '$server:$port',
           secret: secret,
           listenPort: listenPort,
+          transport: transport,
+          fec: fec,
           dataDir: dataDir,
         );
         if (!started) {

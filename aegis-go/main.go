@@ -49,6 +49,8 @@ func serverCmd(args []string) {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
 	listen := fs.String("listen", ":8443", "Listen address")
 	secret := fs.String("secret", "", "Shared secret for authentication")
+	transport := fs.String("transport", "tcp", "Transport protocol (tcp or udp)")
+	fec := fs.Bool("fec", false, "Enable FEC for UDP transport")
 	fs.Parse(args)
 
 	if *secret == "" {
@@ -56,9 +58,16 @@ func serverCmd(args []string) {
 		os.Exit(1)
 	}
 
-	if err := runServer(*listen, *secret); err != nil {
-		fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
-		os.Exit(1)
+	if *transport == "udp" {
+		if err := runUDPServer(*listen, *secret, *fec); err != nil {
+			fmt.Fprintf(os.Stderr, "UDP Server error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := runServer(*listen, *secret); err != nil {
+			fmt.Fprintf(os.Stderr, "Server error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -67,6 +76,8 @@ func clientCmd(args []string) {
 	server := fs.String("server", "", "AEGIS server address (host:port)")
 	secret := fs.String("secret", "", "Shared secret for authentication")
 	listen := fs.String("listen", "127.0.0.1:1080", "Local SOCKS5 listen address")
+	transport := fs.String("transport", "tcp", "Transport protocol (tcp or udp)")
+	fec := fs.Bool("fec", false, "Enable FEC for UDP transport")
 	fs.Parse(args)
 
 	if *server == "" {
@@ -78,8 +89,15 @@ func clientCmd(args []string) {
 		os.Exit(1)
 	}
 
-	if err := runClient(*server, *secret, *listen); err != nil {
-		fmt.Fprintf(os.Stderr, "Client error: %v\n", err)
-		os.Exit(1)
+	if *transport == "udp" {
+		if err := runUDPClient(*server, *secret, *listen, *fec); err != nil {
+			fmt.Fprintf(os.Stderr, "UDP Client error: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		if err := runClient(*server, *secret, *listen); err != nil {
+			fmt.Fprintf(os.Stderr, "Client error: %v\n", err)
+			os.Exit(1)
+		}
 	}
 }

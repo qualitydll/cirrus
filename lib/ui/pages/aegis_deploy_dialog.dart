@@ -50,6 +50,8 @@ class _DeployDialogState extends State<_DeployDialog> {
   String? _error;
   String _log = '';
   VpsDeployResult? _result;
+  String _transport = 'tcp'; // 'tcp' or 'udp'
+  bool _fec = false;
 
   Future<void> _deploy() async {
     final host = _host.text.trim();
@@ -78,6 +80,8 @@ class _DeployDialogState extends State<_DeployDialog> {
           privateKey: _useKey ? _key.text : null,
           keyPassphrase: _keyPass.text,
         ),
+        transport: _transport,
+        fec: _fec,
         onLog: (line) {
           if (!mounted) return;
           setState(() => _log = '$_log$line\n');
@@ -104,11 +108,13 @@ class _DeployDialogState extends State<_DeployDialog> {
     
     // Add AEGIS native profile instead of subscription URL
     await AppScope.read(context).addAegisProfile(
-      name: 'Aegis · ${_host.text.trim()}',
+      name: 'Aegis ${_transport.toUpperCase()}${_fec ? ' + FEC' : ''} · ${_host.text.trim()}',
       server: result.server,
       port: result.port,
       secret: result.secret,
       listenPort: 1080,
+      transport: _transport,
+      fec: _fec,
     );
     if (mounted) Navigator.pop(context);
   }
@@ -210,6 +216,38 @@ class _DeployDialogState extends State<_DeployDialog> {
                 ? null
                 : (s) => setState(() => _useKey = s.first),
           ),
+          const SizedBox(height: 10),
+          // Transport selection
+          Text(
+            'Транспорт:',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: scheme.onSurfaceVariant,
+                ),
+          ),
+          const SizedBox(height: 6),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'tcp', label: Text('TCP')),
+              ButtonSegment(value: 'udp', label: Text('UDP + FEC')),
+            ],
+            selected: {_transport},
+            onSelectionChanged: _busy
+                ? null
+                : (s) => setState(() => _transport = s.first),
+          ),
+          if (_transport == 'udp') ...[
+            const SizedBox(height: 6),
+            CheckboxListTile(
+              title: const Text('FEC (Forward Error Correction)'),
+              subtitle: const Text('Защита от потери пакетов'),
+              value: _fec,
+              onChanged: _busy
+                  ? null
+                  : (v) => setState(() => _fec = v ?? false),
+              controlAffinity: ListTileControlAffinity.leading,
+              contentPadding: EdgeInsets.zero,
+            ),
+          ],
           const SizedBox(height: 10),
           if (_useKey) ...[
             TextField(
