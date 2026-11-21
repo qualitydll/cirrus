@@ -1,4 +1,4 @@
-name: Build Brew
+name: Build Cirrus
 
 on:
   push:
@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate optimized Brew brand assets
+      - name: Generate optimized Cirrus brand assets
         run: |
           python -m pip install --disable-pip-version-check Pillow
           python scripts/generate_brand_assets.py
@@ -122,7 +122,7 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Generate optimized Brew brand assets
+      - name: Generate optimized Cirrus brand assets
         run: |
           python -m pip install --disable-pip-version-check Pillow
           python scripts/generate_brand_assets.py
@@ -163,7 +163,7 @@ jobs:
           test -f "$apk"
           aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
           badging="$("$aapt" dump badging "$apk")"
-          grep -Fq "package: name='dev.brew.brew'" <<<"$badging"
+          grep -Fq "package: name='dev.cirrus.app'" <<<"$badging"
 
           manifest="$("$aapt" dump xmltree "$apk" AndroidManifest.xml)"
           for required in "MihomoVpnService" "android.permission.BIND_VPN_SERVICE" "android.net.VpnService"; do
@@ -177,13 +177,13 @@ jobs:
             echo "::error::APK unexpectedly contains unsupported native ABIs."
             exit 1
           fi
-          unzip -Z1 "$apk" | grep -qx 'assets/flutter_assets/assets/images/brew_logo.png'
-          echo "APK package, VPN service, logo, and ARM64 Mihomo libraries verified."
+          unzip -Z1 "$apk" | grep -qx 'assets/flutter_assets/assets/images/cirrus_logo.png'
+          echo "Cirrus APK package, VPN service, logo, and ARM64 Mihomo libraries verified."
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
-          name: brew-android
+          name: cirrus-android
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
           retention-days: 30
