@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../core/aegis.dart';
 import '../../state/app_state.dart';
 import '../../state/models.dart';
 import '../widgets/common.dart';
@@ -402,8 +403,51 @@ class _AddDialog extends StatefulWidget {
 class _AddDialogState extends State<_AddDialog> {
   late final _input = TextEditingController(text: widget.initialInput ?? '');
   final _name = TextEditingController();
+  final _host = TextEditingController();
+  final _port = TextEditingController(text: '443');
+  final _auth = TextEditingController();
+  final _params = TextEditingController();
   String? _error;
   bool _busy = false;
+
+  /// 0 — paste subscription/key, 1 — manual Aegis node.
+  int _mode = 0;
+  String _preset = 'turbo';
+  bool _cdn = false;
+
+  /// Presets that can traverse a CDN (Cloudflare only proxies HTTP-family
+  /// transports — UDP and REALITY camouflage cannot pass through it).
+  static const _cdnPresets = {'cfws', 'cfgrpc'};
+  static const _presetPorts = {'turbo': '443', 'eco': '8443', 'cfws': '443', 'cfgrpc': '443'};
+
+  void _selectPreset(String id) {
+    setState(() {
+      _preset = id;
+      _port.text = _presetPorts[id] ?? '443';
+    });
+  }
+
+  void _toggleCdn(bool value) {
+    setState(() {
+      _cdn = value;
+      if (_cdn && !_cdnPresets.contains(_preset)) _preset = 'cfws';
+    });
+  }
+
+  /// Builds the `aegis://` share link from the manual-node fields.
+  String? _buildAegisLink() {
+    final host = _host.text.trim();
+    final auth = _auth.text.trim();
+    if (host.isEmpty || auth.isEmpty) return null;
+    final port = int.tryParse(_port.text.trim()) ?? 443;
+    final q = _params.text.trim();
+    final query = q.isEmpty ? '' : '?$q';
+    final frag = Uri.encodeComponent(_name.text.trim().isEmpty
+        ? aegisPresets[_preset]?.label ?? _preset
+        : _name.text.trim());
+    return 'aegis://$_preset.${Uri.encodeComponent(auth)}'
+        '@$host:$port$query#$frag';
+  }
 
   Future<void> _paste() async {
     final data = await Clipboard.getData(Clipboard.kTextPlain);
@@ -411,14 +455,23 @@ class _AddDialogState extends State<_AddDialog> {
   }
 
   Future<void> _submit() async {
-    if (_input.text.trim().isEmpty) return;
+    String input = _input.text;
+    if (_mode == 1) {
+      final link = _buildAegisLink();
+      if (link == null) {
+        setState(() => _error = 'Укажите хост и ключ/пароль ноды');
+        return;
+      }
+      input = link;
+    }
+    if (input.trim().isEmpty) return;
     setState(() {
       _busy = true;
       _error = null;
     });
     try {
       await AppScope.read(context).addProfile(
-        _input.text,
+        input,
         name: _name.text.trim().isEmpty ? null : _name.text.trim(),
       );
       if (mounted) Navigator.pop(context);
@@ -429,6 +482,63 @@ class _AddDialogState extends State<_AddDialog> {
     }
   }
 
+  void _showPresetHelp() {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Типы Aegis'),
+        content: const SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _HelpItem(
+                title: 'Turbo · UDP · FEC',
+                body: 'Максимальная скорость: трафик идёт по UDP с защитой '
+                    'от потерь пакетов — как в онлайн-играх и стриминге. '
+                    'Но UDP не проходит через CDN Cloudflare — работает '
+                    'только напрямую на сервер. Для ПК, ТВ и ноутбуков.',
+              ),
+              _HelpItem(
+                title: 'Eco · TCP · TLS · Reality',
+                body: 'Лёгкий режим для телефона: маскируется под обычный '
+                    'сайт через REALITY — для цензора выглядит как '
+                    'подключение к реальному сайту. Тоже только напрямую, '
+                    'без CDN. Для слабых устройств и мобильного интернета.',
+              ),
+              _HelpItem(
+                title: 'WS · CF',
+                body: 'Идёт через сеть Cloudflare как обычный сайт по '
+                    'WebSocket. Медленнее Turbo, но пробивается там, где '
+                    'прямые протоколы заблокированы. Нужен домен за '
+                    'Cloudflare (оранжевое облако).',
+              ),
+              _HelpItem(
+                title: 'gRPC · CF',
+                body: 'То же через Cloudflare, но по gRPC — чуть стабильнее '
+                    'на нестабильных сетях. Тоже требует домен за '
+                    'Cloudflare.',
+              ),
+              SizedBox(height: 8),
+              Text(
+                ' Галочка «Через CDN» оставляет доступными только '
+                'WS·CF и gRPC·CF — Cloudflare не пропускает UDP и '
+                'Reality-трафик.',
+                style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Понятно'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -436,44 +546,157 @@ class _AddDialogState extends State<_AddDialog> {
       icon: Icon(Icons.add_link_rounded, color: scheme.primary, size: 32),
       title: const Text('Новая подписка'),
       content: SizedBox(
-        width: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _input,
-              autofocus: true,
-              minLines: 3,
-              maxLines: 6,
-              decoration: InputDecoration(
-                hintText: 'https://… или vless://…, по одной ссылке на строку',
-                suffixIcon: IconButton(
-                  tooltip: 'Вставить',
-                  onPressed: _paste,
-                  icon: const Icon(Icons.content_paste_rounded),
+        width: 520,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(
+                    value: 0,
+                    icon: Icon(Icons.link_rounded),
+                    label: Text('Ссылка'),
+                  ),
+                  ButtonSegment(
+                    value: 1,
+                    icon: Icon(Icons.bolt_rounded),
+                    label: Text('Aegis-нода'),
+                  ),
+                ],
+                selected: {_mode},
+                onSelectionChanged: _busy
+                    ? null
+                    : (s) => setState(() => _mode = s.first),
+              ),
+              const SizedBox(height: 14),
+              if (_mode == 0) ...[
+                TextField(
+                  controller: _input,
+                  autofocus: true,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText:
+                        'https://… или aegis://…, по одной ссылке на строку',
+                    suffixIcon: IconButton(
+                      tooltip: 'Вставить',
+                      onPressed: _paste,
+                      icon: const Icon(Icons.content_paste_rounded),
+                    ),
+                  ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _name,
-              decoration: const InputDecoration(
-                hintText: 'Название (необязательно)',
-              ),
-            ),
-            AnimatedSize(
-              duration: const Duration(milliseconds: 250),
-              child: _error == null
-                  ? const SizedBox(width: double.infinity)
-                  : Padding(
-                      padding: const EdgeInsets.only(top: 12),
-                      child: Text(
-                        _error!,
-                        style: TextStyle(color: scheme.error),
+              ] else ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          for (final e in aegisPresets.entries)
+                            Tooltip(
+                              message: _cdn && !_cdnPresets.contains(e.key)
+                                  ? 'Недоступен через CDN — Cloudflare '
+                                      'не пропускает этот транспорт'
+                                  : e.value.description,
+                              child: ChoiceChip(
+                                label: Text(e.value.label),
+                                selected: _preset == e.key,
+                                onSelected: _cdn &&
+                                        !_cdnPresets.contains(e.key)
+                                    ? null
+                                    : (_) => _selectPreset(e.key),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-            ),
-          ],
+                    IconButton(
+                      tooltip: 'Что означают типы?',
+                      onPressed: _showPresetHelp,
+                      icon: const Icon(Icons.help_outline_rounded),
+                    ),
+                  ],
+                ),
+                CheckboxListTile(
+                  value: _cdn,
+                  onChanged: _busy ? null : (v) => _toggleCdn(v ?? false),
+                  title: const Text('Через CDN (Cloudflare)'),
+                  subtitle: const Text(
+                    'Оставляет только WS·CF и gRPC·CF',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  controlAffinity: ListTileControlAffinity.leading,
+                  contentPadding: EdgeInsets.zero,
+                  dense: true,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: TextField(
+                        controller: _host,
+                        decoration: const InputDecoration(
+                          labelText: 'Хост',
+                          hintText: 'vpn.example.com или IP',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextField(
+                        controller: _port,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Порт'),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _auth,
+                  decoration: InputDecoration(
+                    labelText: _preset == 'turbo'
+                        ? 'Пароль ноды'
+                        : 'UUID ноды',
+                    hintText: _preset == 'turbo'
+                        ? 'пароль из панели Aegis'
+                        : 'uuid из панели Aegis',
+                  ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _params,
+                  decoration: const InputDecoration(
+                    labelText: 'Доп. параметры (необязательно)',
+                    hintText: 'sni=…&path=…&pbk=…&sid=…',
+                  ),
+                ),
+              ],
+              const SizedBox(height: 12),
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(
+                  labelText: 'Название подписки',
+                  hintText: 'Например: Aegis · Germany Turbo',
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                child: _error == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
+              ),
+            ],
+          ),
         ),
       ),
       actions: [
@@ -495,6 +718,35 @@ class _AddDialogState extends State<_AddDialog> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _HelpItem extends StatelessWidget {
+  const _HelpItem({required this.title, required this.body});
+
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: scheme.primary,
+                  fontWeight: FontWeight.w700,
+                ),
+          ),
+          const SizedBox(height: 2),
+          Text(body, style: Theme.of(context).textTheme.bodySmall),
+        ],
+      ),
     );
   }
 }
