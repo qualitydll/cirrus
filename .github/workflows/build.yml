@@ -110,6 +110,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Create Windows ZIP
+        shell: pwsh
+        run: |
+          $release = "build/windows/x64/runner/Release"
+          $zip = "cirrus-windows-v1.0.0.zip"
+          Compress-Archive -Path "$release/*" -DestinationPath $zip -Force
+          Write-Host "Created $zip"
+
+      - name: Upload Windows ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: cirrus-windows-zip
+          path: cirrus-windows-v1.0.0.zip
+          if-no-files-found: error
+          retention-days: 30
+
   build-android:
     runs-on: ubuntu-latest
     timeout-minutes: 45
@@ -158,11 +174,17 @@ jobs:
       - name: Build Android APK (ARM64)
         run: flutter build apk --release --target-platform android-arm64
 
+      - name: Rename APK with proper extension
+        run: |
+          cd build/app/outputs/flutter-apk
+          cp app-release.apk cirrus-v1.0.0.apk
+          ls -la *.apk
+
       - name: Verify APK package and native Mihomo runtime
         shell: bash
         run: |
           set -euo pipefail
-          apk="build/app/outputs/flutter-apk/app-release.apk"
+          apk="build/app/outputs/flutter-apk/cirrus-v1.0.0.apk"
           test -f "$apk"
           aapt="$ANDROID_HOME/build-tools/36.0.0/aapt"
           badging="$("$aapt" dump badging "$apk")"
@@ -187,6 +209,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cirrus-android
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: build/app/outputs/flutter-apk/cirrus-v1.0.0.apk
           if-no-files-found: error
           retention-days: 30
