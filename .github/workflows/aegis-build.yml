@@ -84,42 +84,15 @@ jobs:
         with:
           path: artifacts
       
-      - name: List artifacts
+      - name: Create release archive
         run: |
-          echo "=== Artifacts directory ==="
-          ls -la artifacts/
-          find artifacts/ -type f -name "aegis*" | head -20
+          cd artifacts
+          tar -czf aegis-binaries.tar.gz */
+          ls -la aegis-binaries.tar.gz
       
-      - name: Create release
-        uses: softprops/action-gh-release@v1
+      - name: Upload release archive
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: aegis-v${{ github.run_number }}
-          name: AEGIS v${{ github.run_number }}
-          body: |
-            AEGIS protocol binaries for all platforms.
-            
-            ## Files
-            - `aegis-linux-amd64` — Linux x86_64
-            - `aegis-linux-arm64` — Linux ARM64
-            - `aegis-android-arm64` — Android ARM64
-            - `aegis-windows-amd64.exe` — Windows x86_64
-            - `aegis-darwin-amd64` — macOS Intel
-            - `aegis-darwin-arm64` — macOS Apple Silicon
-            
-            ## Usage
-            ```bash
-            # Server
-            ./aegis server -listen :8443 -secret your_secret
-            
-            # Client (TCP)
-            ./aegis client -server VPS_IP:8443 -secret your_secret -listen 127.0.0.1:1080
-            
-            # Client (UDP + FEC)
-            ./aegis client -server VPS_IP:8443 -secret your_secret -listen 127.0.0.1:1080 -transport udp -fec
-            ```
-          files: |
-            artifacts/**/aegis-*
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: aegis-release-archive
+          path: artifacts/aegis-binaries.tar.gz
+          retention-days: 90
