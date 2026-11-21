@@ -68,7 +68,7 @@ dev_dependencies:
 flutter:
 
   assets:
-    - assets/images/cirrus_icon.jpg
+    - assets/images/cirrus_icon.png
     - assets/images/cirrus_logo.png
     - cirrus_icon.png
     - aegis/install.sh
