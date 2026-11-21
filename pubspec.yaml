@@ -72,6 +72,8 @@ flutter:
     - assets/images/cirrus_logo.png
     - cirrus_icon.png
     - aegis-install.sh
+    # AEGIS binary will be downloaded from GitHub Actions artifacts if not bundled
+    # To bundle locally, build aegis from aegis-go/ and place it in assets/aegis/
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in
