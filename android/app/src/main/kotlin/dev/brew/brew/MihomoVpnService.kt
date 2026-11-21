@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.ParcelFileDescriptor
 import android.os.ResultReceiver
+import dev.cirrus.app.R
 import io.github.oviron.libmihomo.Clash
 import io.github.oviron.libmihomo.TunInterface
 import org.json.JSONObject
