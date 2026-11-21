@@ -35,28 +35,52 @@
 
 Список возможностей отражает реализацию проекта, но не является гарантией поддержки каждого протокола, устройства или провайдера.
 
-## Aegis — профили подключения
+## Aegis — собственный VPN-протокол
 
-**Aegis** (`*`) — слой именованных транспортных профилей с тепло-синей маркировкой. Каждая `aegis://`-ссылка разворачивается в реальный outbound Mihomo, а серверная часть поднимается одной командой на VPS.
+**Aegis** — это собственный зашифрованный протокол, разработанный с нуля на Go. В отличие от обычных VPN-клиентов, которые используют готовые протоколы (VLESS, Hysteria2), Aegis реализует собственный wire-формат с шифрованием ChaCha20-Poly1305 и обфускацией.
 
-| Профиль | Метка | Транспорт | Назначение |
-| --- | --- | --- | --- |
-| `turbo` | `AEGIS · UDP · FEC` | Hysteria2 / UDP / obfs | ПК, ТВ, ноутбуки — максимум скорости |
-| `eco` | `AEGIS · TCP · TLS · REALITY` | VLESS + REALITY | Телефоны — минимум нагрузки |
-| `cfws` | `AEGIS · WS · CF` | VLESS + WebSocket за Cloudflare | Обход блокировок по IP через CDN |
-| `cfgrpc` | `AEGIS · gRPC · CF` | VLESS + gRPC за Cloudflare | CDN-режим, альтернативный транспорт |
+### Возможности протокола
 
-Формат ссылки: `aegis://<preset>.<auth>@<host>:<port>?<params>#<name>`.
+- **Шифрование**: ChaCha20-Poly1305 (AEAD) с HKDF-SHA3-256
+- **Обфускация**: random padding, timing jitter, fake packets
+- **Транспорты**: TCP (текущая версия), UDP (в разработке)
+- **Интерфейс**: SOCKS5 прокси для mihomo/других клиентов
 
-Серверная часть — панель и автоустановщик в каталоге [`aegis/`](aegis/):
+### Установка сервера
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis/install.sh | bash
+# Скачать и запустить установщик
+curl -fsSL https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis-install.sh | bash
 ```
 
-Установщик поднимает sing-box, веб-панель с генерацией нод и меню `aegis` на VPS и сразу выдаёт готовую subscription-ссылку. Подробнее — в [aegis/README.md](aegis/README.md).
+Или вручную:
 
-**Авто-развёртывание из приложения:** в диалоге «Добавить подписку» есть пункт **«Развернуть Aegis на VPS»** — приложение подключается по SSH (пароль или приватный ключ), заливает установщик, запускает его и возвращает готовую subscription-ссылку для импорта в один клик.
+```bash
+# Скачать бинарь с GitHub Releases
+wget https://github.com/qualitydll/aegis/releases/download/aegis-v1/aegis-linux-amd64
+chmod +x aegis-linux-amd64
+
+# Запустить сервер
+./aegis-linux-amd64 server -listen :8443 -secret your_secret
+```
+
+### Использование в приложении
+
+1. **Добавить профиль**: «Добавить» → «AEGIS Native»
+2. **Указать данные**: сервер, порт, секрет
+3. **Подключиться**: приложение автоматически запустит Aegis daemon и настроит mihomo
+
+### Авто-развёртывание
+
+В диалоге «Добавить» есть пункт **«Развернуть Aegis на VPS»** — приложение подключается по SSH, устанавливает демон и возвращает данные для подключения в один клик.
+
+### Бинарные файлы
+
+Сборки доступны в [GitHub Releases](https://github.com/qualitydll/aegis/releases):
+- `aegis-linux-amd64` — Linux x86_64
+- `aegis-windows-amd64.exe` — Windows x86_64
+- `aegis-darwin-amd64` — macOS Intel
+- `aegis-darwin-arm64` — macOS Apple Silicon
 
 ## Платформы
 
@@ -102,8 +126,8 @@ flutter build windows --release
 
 | Путь | Назначение |
 | --- | --- |
-| lib/core | Сетевое ядро, API, конфигурации и разбор ссылок (включая aegis://) |
-| aegis/ | Aegis: панель, автоустановщик и документация профилей |
+| lib/core | Сетевое ядро, API, конфигурации и разбор ссылок |
+| aegis-go/ | AEGIS: собственный VPN-протокол на Go |
 | lib/state | Состояние приложения, профили и настройки |
 | lib/ui | Экраны, тема и компоненты интерфейса |
 | android/ | Android-приложение и VPN-служба |

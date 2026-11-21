@@ -3,9 +3,8 @@ import 'dart:convert';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:http/http.dart' as http;
 
-/// Credentials for deploying Aegis onto a remote VPS over SSH.
+/// Credentials for deploying AEGIS onto a remote VPS over SSH.
 class VpsCredentials {
   const VpsCredentials({
     required this.host,
@@ -26,18 +25,20 @@ class VpsCredentials {
 
 class VpsDeployResult {
   const VpsDeployResult({
-    required this.panelUrl,
-    required this.subscriptionUrl,
+    required this.server,
+    required this.port,
+    required this.secret,
     required this.log,
   });
 
-  final String panelUrl;
-  final String subscriptionUrl;
+  final String server;
+  final int port;
+  final String secret;
   final String log;
 }
 
-/// Uploads the bundled Aegis installer to [creds] over SSH/SFTP, runs it and
-/// returns the panel + subscription URLs printed into /etc/aegis/state.json.
+/// Uploads the AEGIS installer to [creds] over SSH/SFTP, runs it and
+/// returns the server connection details.
 Future<VpsDeployResult> deployAegis(
   VpsCredentials creds, {
   void Function(String line)? onLog,
@@ -76,8 +77,6 @@ Future<VpsDeployResult> deployAegis(
       username: creds.username,
       onPasswordRequest: () => creds.password,
       identities: identities.isEmpty ? null : identities,
-      // First-connect UX: accept the host key like `ssh` does on first use.
-      // TODO: replace with TOFU fingerprint storage for production hardening.
       disableHostkeyVerification: true,
     );
 
@@ -86,21 +85,22 @@ Future<VpsDeployResult> deployAegis(
     try {
       await sftp.mkdir('/tmp/aegis_deploy');
     } catch (_) {/* already exists */}
-    for (final name in ['install.sh', 'aegis_panel.py']) {
-      final bytes = await rootBundle.load('aegis/$name');
-      final file = await sftp.open(
-        '/tmp/aegis_deploy/$name',
-        mode: SftpFileOpenMode.create |
-            SftpFileOpenMode.truncate |
-            SftpFileOpenMode.write,
-      );
-      await file.writeBytes(
-        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-      );
-      await file.close();
-    }
+    
+    // Upload new installer
+    final bytes = await rootBundle.load('aegis-install.sh');
+    final file = await sftp.open(
+      '/tmp/aegis_deploy/aegis-install.sh',
+      mode: SftpFileOpenMode.create |
+          SftpFileOpenMode.truncate |
+          SftpFileOpenMode.write,
+    );
+    await file.writeBytes(
+      bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
+    );
+    await file.close();
+    
     final chmod = await client.runWithResult(
-      'chmod +x /tmp/aegis_deploy/install.sh',
+      'chmod +x /tmp/aegis_deploy/aegis-install.sh',
     );
     if ((chmod.exitCode ?? -1) != 0) {
       throw Exception('chmod failed: ${utf8.decode(chmod.stderr)}');
@@ -108,7 +108,7 @@ Future<VpsDeployResult> deployAegis(
 
     both('→ running installer (this can take a few minutes) …');
     final result = await client
-        .runWithResult('bash /tmp/aegis_deploy/install.sh 2>&1')
+        .runWithResult('bash /tmp/aegis_deploy/aegis-install.sh 2>&1')
         .timeout(timeout);
     final out = utf8.decode(result.stdout, allowMalformed: true);
     for (final line in out.split('\n')) {
@@ -118,40 +118,22 @@ Future<VpsDeployResult> deployAegis(
       throw Exception('Установка завершилась с ошибкой (код ${result.exitCode})');
     }
 
-    both('→ reading panel credentials …');
-    final stateRes = await client.runWithResult('cat /etc/aegis/state.json');
-    if ((stateRes.exitCode ?? -1) != 0) {
-      throw Exception('state.json не найден — установка не завершилась');
+    // Extract connection details from output
+    final serverMatch = RegExp(r'Server:\s*(\S+):(\d+)').firstMatch(out);
+    final secretMatch = RegExp(r'Secret:\s*(\S+)').firstMatch(out);
+    
+    if (serverMatch == null || secretMatch == null) {
+      throw Exception('Не удалось извлечь данные подключения из вывода установщика');
     }
-    final state = jsonDecode(utf8.decode(stateRes.stdout))
-        as Map<String, dynamic>;
-    final token = state['token'] as String? ?? '';
-    final subToken = state['sub_token'] as String? ?? '';
-    if (token.isEmpty || subToken.isEmpty) {
-      throw Exception('Панель установлена, но токены не найдены');
-    }
+    
+    final server = serverMatch.group(1)!;
+    final port = int.tryParse(serverMatch.group(2)!) ?? 8443;
+    final secret = secretMatch.group(1)!;
 
-    final panelPort = 8901;
-    final panelUrl = 'http://$host:$panelPort/?k=$token';
-    final subscriptionUrl = 'http://$host:$panelPort/sub/$subToken';
-
-    // If the user connected via a domain (not a raw IP), prefer it for node
-    // links so they survive IP changes.
-    final isIp = RegExp(r'^\d{1,3}(\.\d{1,3}){3}$').hasMatch(host);
-    if (!isIp && token.isNotEmpty) {
-      try {
-        await http
-            .post(
-              Uri.parse('http://$host:$panelPort/api/host?k=$token'),
-              headers: {'Content-Type': 'application/json'},
-              body: jsonEncode({'host': host}),
-            )
-            .timeout(const Duration(seconds: 10));
-      } catch (_) {/* non-fatal */}
-    }
     return VpsDeployResult(
-      panelUrl: panelUrl,
-      subscriptionUrl: subscriptionUrl,
+      server: server,
+      port: port,
+      secret: secret,
       log: buf.toString(),
     );
   } on TimeoutException {

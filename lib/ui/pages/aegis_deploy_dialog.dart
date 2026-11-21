@@ -99,11 +99,16 @@ class _DeployDialogState extends State<_DeployDialog> {
   }
 
   Future<void> _import() async {
-    final url = _result?.subscriptionUrl;
-    if (url == null) return;
-    await AppScope.read(context).addProfile(
-      url,
+    final result = _result;
+    if (result == null) return;
+    
+    // Add AEGIS native profile instead of subscription URL
+    await AppScope.read(context).addAegisProfile(
       name: 'Aegis · ${_host.text.trim()}',
+      server: result.server,
+      port: result.port,
+      secret: result.secret,
+      listenPort: 1080,
     );
     if (mounted) Navigator.pop(context);
   }
@@ -160,8 +165,8 @@ class _DeployDialogState extends State<_DeployDialog> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Приложение само залогинится по SSH, установит sing-box и '
-            'панель, затем выдаст подписку.',
+            'Приложение само залогинится по SSH и установит AEGIS демон '
+            'на ваш сервер.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: scheme.onSurfaceVariant,
                 ),
@@ -262,14 +267,13 @@ class _DeployDialogState extends State<_DeployDialog> {
   }
 
   Widget _buildResult(ColorScheme scheme) {
-    final url = _result!.subscriptionUrl;
+    final result = _result!;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Подписка готова. В ней уже есть aegis:// и raw-ссылки всех '
-          'пресетов — добавь её в профили.',
+          'AEGIS сервер развёрнут. Данные для подключения:',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: scheme.onSurfaceVariant,
               ),
@@ -282,11 +286,21 @@ class _DeployDialogState extends State<_DeployDialog> {
             color: scheme.surfaceContainerHighest.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: SelectableText(
-            url,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Сервер: ${result.server}:${result.port}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        fontWeight: FontWeight.w600,
+                      )),
+              const SizedBox(height: 4),
+              Text('Секрет: ${result.secret}',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: scheme.onSurfaceVariant,
+                      )),
+            ],
           ),
         ),
         const SizedBox(height: 10),
@@ -295,28 +309,23 @@ class _DeployDialogState extends State<_DeployDialog> {
             Expanded(
               child: OutlinedButton.icon(
                 onPressed: () {
-                  Clipboard.setData(ClipboardData(text: url));
+                  Clipboard.setData(
+                    ClipboardData(text: '${result.server}:${result.port}'),
+                  );
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Ссылка скопирована')),
+                    const SnackBar(content: Text('Адрес скопирован')),
                   );
                 },
                 icon: const Icon(Icons.copy_rounded),
-                label: const Text('Копировать'),
+                label: const Text('Копировать адрес'),
               ),
             ),
             const SizedBox(width: 10),
             Expanded(
-              child: OutlinedButton.icon(
-                onPressed: () {
-                  Clipboard.setData(
-                    ClipboardData(text: _result!.panelUrl),
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('URL панели скопирован')),
-                  );
-                },
-                icon: const Icon(Icons.dashboard_rounded),
-                label: const Text('Панель'),
+              child: FilledButton.icon(
+                onPressed: _import,
+                icon: const Icon(Icons.add_rounded),
+                label: const Text('Добавить профиль'),
               ),
             ),
           ],

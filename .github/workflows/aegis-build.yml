@@ -1,0 +1,93 @@
+name: Build AEGIS Binaries
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'aegis-go/**'
+      - '.github/workflows/aegis-build.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            goos: linux
+            goarch: amd64
+            output: aegis-linux-amd64
+          - os: windows-latest
+            goos: windows
+            goarch: amd64
+            output: aegis-windows-amd64.exe
+          - os: macos-latest
+            goos: darwin
+            goarch: amd64
+            output: aegis-darwin-amd64
+          - os: macos-latest
+            goos: darwin
+            goarch: arm64
+            output: aegis-darwin-arm64
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+      
+      - name: Build AEGIS
+        working-directory: aegis-go
+        run: |
+          go mod tidy
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} CGO_ENABLED=0 go build -o ${{ matrix.output }} .
+      
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.output }}
+          path: aegis-go/${{ matrix.output }}
+          retention-days: 30
+  
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: aegis-v${{ github.run_number }}
+          name: AEGIS v${{ github.run_number }}
+          body: |
+            AEGIS protocol binaries for all platforms.
+            
+            ## Files
+            - `aegis-linux-amd64` — Linux x86_64
+            - `aegis-windows-amd64.exe` — Windows x86_64
+            - `aegis-darwin-amd64` — macOS Intel
+            - `aegis-darwin-arm64` — macOS Apple Silicon
+            
+            ## Usage
+            ```bash
+            # Server
+            ./aegis server -listen :8443 -secret your_secret
+            
+            # Client
+            ./aegis client -server VPS_IP:8443 -secret your_secret -listen 127.0.0.1:1080
+            ```
+          files: artifacts/**/${{ matrix.output }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -115,9 +115,11 @@ class _ProfileTile extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final t = Theme.of(context).textTheme;
     final pr = profile;
-    final host = pr.url == null
-        ? 'Локальный список'
-        : Uri.tryParse(pr.url!)?.host ?? pr.url!;
+    final host = pr.isAegisNative
+        ? '${pr.aegisConfig?['server']}:${pr.aegisConfig?['port']}'
+        : pr.url == null
+            ? 'Локальный список'
+            : Uri.tryParse(pr.url!)?.host ?? pr.url!;
     return AnimatedContainer(
       duration: const Duration(milliseconds: 450),
       curve: Curves.easeOutCubic,
@@ -167,7 +169,9 @@ class _ProfileTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '$host · ${pr.proxyCount} серверов · ${timeAgo(pr.updatedAt)}',
+                        pr.isAegisNative
+                            ? '$host · AEGIS Native · ${timeAgo(pr.updatedAt)}'
+                            : '$host · ${pr.proxyCount} серверов · ${timeAgo(pr.updatedAt)}',
                         style: t.bodySmall?.copyWith(
                           color: scheme.onSurfaceVariant,
                         ),
@@ -289,6 +293,10 @@ Future<void> showAddProfileDialog(BuildContext context) async {
     await showAegisDeployDialog(context);
     return;
   }
+  if (method == _AddMethod.aegisNative) {
+    await _showAegisNativeDialog(context);
+    return;
+  }
   if (method == _AddMethod.qr) {
     final scanned = await Navigator.of(
       context,
@@ -324,7 +332,7 @@ Future<void> _showAddDialog(BuildContext context, {String? initialInput}) {
   );
 }
 
-enum _AddMethod { qr, link, vps }
+enum _AddMethod { qr, link, vps, aegisNative }
 
 class _AddMethodSheet extends StatelessWidget {
   const _AddMethodSheet({required this.showQr});
@@ -381,6 +389,18 @@ class _AddMethodSheet extends StatelessWidget {
               'SSH-доступ к серверу — приложение всё установит само',
             ),
             onTap: () => Navigator.pop(context, _AddMethod.vps),
+          ),
+          ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFF1F4E79),
+              foregroundColor: const Color(0xFF93C5FD),
+              child: const Icon(Icons.bolt_rounded),
+            ),
+            title: const Text('AEGIS Native'),
+            subtitle: const Text(
+              'Свой протокол — укажите сервер и секрет',
+            ),
+            onTap: () => Navigator.pop(context, _AddMethod.aegisNative),
           ),
           const SizedBox(height: 8),
         ],
@@ -786,6 +806,198 @@ class _HelpItem extends StatelessWidget {
           Text(body, style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
+    );
+  }
+}
+
+/// Dialog for adding AEGIS native profile (custom protocol).
+Future<void> _showAegisNativeDialog(BuildContext context) async {
+  return showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: 'aegis-native',
+    transitionDuration: const Duration(milliseconds: 420),
+    pageBuilder: (context, _, _) => const _AegisNativeDialog(),
+    transitionBuilder: (context, anim, _, child) {
+      final curve = CurvedAnimation(
+        parent: anim,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      );
+      return FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: Tween(begin: 0.85, end: 1.0).animate(curve),
+          child: child,
+        ),
+      );
+    },
+  );
+}
+
+class _AegisNativeDialog extends StatefulWidget {
+  const _AegisNativeDialog();
+
+  @override
+  State<_AegisNativeDialog> createState() => _AegisNativeDialogState();
+}
+
+class _AegisNativeDialogState extends State<_AegisNativeDialog> {
+  final _name = TextEditingController();
+  final _server = TextEditingController();
+  final _port = TextEditingController(text: '8443');
+  final _secret = TextEditingController();
+  final _listenPort = TextEditingController(text: '1080');
+  String? _error;
+  bool _busy = false;
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _server.dispose();
+    _port.dispose();
+    _secret.dispose();
+    _listenPort.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final server = _server.text.trim();
+    final secret = _secret.text.trim();
+    final port = int.tryParse(_port.text.trim()) ?? 8443;
+    final listenPort = int.tryParse(_listenPort.text.trim()) ?? 1080;
+    final name = _name.text.trim().isEmpty ? 'AEGIS Native' : _name.text.trim();
+
+    if (server.isEmpty || secret.isEmpty) {
+      setState(() => _error = 'Укажите сервер и секрет');
+      return;
+    }
+
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+
+    try {
+      await AppScope.read(context).addAegisProfile(
+        name: name,
+        server: server,
+        port: port,
+        secret: secret,
+        listenPort: listenPort,
+      );
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return AlertDialog(
+      icon: Icon(Icons.bolt_rounded, color: scheme.primary, size: 32),
+      title: const Text('AEGIS Native'),
+      content: SizedBox(
+        width: 480,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Свой протокол AEGIS — зашифрованный туннель с обфускацией. '
+                'Требуется AEGIS-сервер (демон на VPS).',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _name,
+                decoration: const InputDecoration(
+                  labelText: 'Название',
+                  hintText: 'Мой AEGIS сервер',
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: TextField(
+                      controller: _server,
+                      decoration: const InputDecoration(
+                        labelText: 'Сервер',
+                        hintText: '1.2.3.4 или vpn.example.com',
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextField(
+                      controller: _port,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Порт'),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _secret,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Секрет',
+                  hintText: 'Пароль/ключ от AEGIS-сервера',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _listenPort,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Локальный порт',
+                  hintText: '1080 (SOCKS5 для mihomo)',
+                ),
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 250),
+                child: _error == null
+                    ? const SizedBox(width: double.infinity)
+                    : Padding(
+                        padding: const EdgeInsets.only(top: 12),
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: scheme.error),
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        FilledButton(
+          onPressed: _busy ? null : _submit,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 200),
+            child: _busy
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Добавить'),
+          ),
+        ),
+      ],
     );
   }
 }

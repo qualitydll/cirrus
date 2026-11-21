@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../core/android_vpn.dart';
+import '../core/aegis_daemon.dart';
 import '../core/config_builder.dart';
 import '../core/link_parser.dart';
 import '../core/mihomo_config_path.dart';
@@ -79,6 +80,7 @@ class AppState extends ChangeNotifier {
   late final String dataDir;
   final core = MihomoCore();
   final androidVpn = AndroidVpn();
+  final aegisDaemon = AegisDaemon();
   final traffic = TrafficStore();
   final logs = LogStore();
 
@@ -315,6 +317,32 @@ class AppState extends ChangeNotifier {
     return Uri.tryParse(url)?.host;
   }
 
+  /// Adds an AEGIS native profile (custom protocol, not share links).
+  Future<void> addAegisProfile({
+    required String name,
+    required String server,
+    required int port,
+    required String secret,
+    int listenPort = 1080,
+  }) async {
+    final profile = Profile(
+      id: newId(),
+      name: name,
+      url: null,
+      updatedAt: DateTime.now(),
+      aegisConfig: {
+        'server': server,
+        'port': port,
+        'secret': secret,
+        'listenPort': listenPort,
+      },
+    );
+    profiles.add(profile);
+    settings.activeProfileId ??= profile.id;
+    await _saveProfiles();
+    notifyListeners();
+  }
+
   /// Adds a profile from a subscription URL or raw text (links / YAML).
   Future<void> addProfile(String input, {String? name}) async {
     final text = input.trim();
@@ -360,7 +388,7 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> updateProfile(Profile pr) async {
-    if (pr.url == null) return;
+    if (pr.url == null || pr.isAegisNative) return;
     busyProfile = true;
     notifyListeners();
     try {
@@ -498,10 +526,47 @@ class AppState extends ChangeNotifier {
     final started = DateTime.now();
     var androidServiceStarted = false;
     String? androidSessionId;
+    var aegisStarted = false;
     try {
-      final content = await _profileFile(profile.id).readAsString();
-      final parsed = parseSubscription(content);
-      final config = applyCoreOptions(baseConfigFor(parsed), _options);
+      Map<String, dynamic> config;
+      
+      // Check if this is an AEGIS native profile
+      if (profile.isAegisNative && profile.aegisConfig != null) {
+        final aegisCfg = profile.aegisConfig!;
+        final server = aegisCfg['server'] as String;
+        final port = aegisCfg['port'] as int? ?? 8443;
+        final secret = aegisCfg['secret'] as String;
+        final listenPort = aegisCfg['listenPort'] as int? ?? 1080;
+        
+        // Start AEGIS daemon
+        final aegisBinary = await AegisDaemon.locate(dataDir: dataDir);
+        if (aegisBinary == null) {
+          throw Exception('AEGIS daemon not found. Please place aegis binary in data directory.');
+        }
+        
+        logs.add(LogEntry('info', 'Starting AEGIS daemon on port $listenPort...'));
+        final started = await aegisDaemon.start(
+          binaryPath: aegisBinary,
+          serverAddr: '$server:$port',
+          secret: secret,
+          listenPort: listenPort,
+          dataDir: dataDir,
+        );
+        if (!started) {
+          throw Exception('Failed to start AEGIS daemon');
+        }
+        aegisStarted = true;
+        logs.add(LogEntry('info', 'AEGIS daemon started, SOCKS5 on 127.0.0.1:$listenPort'));
+        
+        // Generate mihomo config with SOCKS5 upstream
+        config = _buildAegisMihomoConfig(listenPort);
+      } else {
+        // Regular profile (share links / subscription)
+        final content = await _profileFile(profile.id).readAsString();
+        final parsed = parseSubscription(content);
+        config = applyCoreOptions(baseConfigFor(parsed), _options);
+      }
+      
       final rawProxies = config['proxies'];
       proxyConfigs = {
         if (rawProxies is List)
@@ -551,6 +616,9 @@ class AppState extends ChangeNotifier {
       notifyListeners();
     } catch (e) {
       Object connectionError = e;
+      if (aegisStarted) {
+        await aegisDaemon.stop();
+      }
       if (androidServiceStarted) {
         try {
           await androidVpn.stop(sessionId: androidSessionId!);
@@ -578,6 +646,39 @@ class AppState extends ChangeNotifier {
       logs.add(LogEntry('error', connectionError.toString()));
       notifyListeners();
     }
+  }
+
+  /// Builds mihomo config for AEGIS native profile.
+  /// Uses local SOCKS5 proxy (AEGIS daemon) as upstream.
+  Map<String, dynamic> _buildAegisMihomoConfig(int listenPort) {
+    return {
+      'proxies': [
+        {
+          'name': 'AEGIS',
+          'type': 'socks5',
+          'server': '127.0.0.1',
+          'port': listenPort,
+          'udp': true,
+        },
+      ],
+      'proxy-groups': [
+        {
+          'name': 'PROXY',
+          'type': 'select',
+          'proxies': ['AEGIS', 'DIRECT'],
+        },
+      ],
+      'rules': [
+        'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
+        'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
+        'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
+        'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve',
+        'IP-CIDR,100.64.0.0/10,DIRECT,no-resolve',
+        'DOMAIN-SUFFIX,local,DIRECT',
+        'DOMAIN-SUFFIX,lan,DIRECT',
+        'MATCH,PROXY',
+      ],
+    };
   }
 
   /// Writes [config], dropping servers the core refuses to load so that one
@@ -622,6 +723,7 @@ class AppState extends ChangeNotifier {
       } else {
         await core.stop();
       }
+      await aegisDaemon.stop();
       await Future<void>.delayed(const Duration(milliseconds: 400));
     } catch (e) {
       error = e.toString();
@@ -643,6 +745,7 @@ class AppState extends ChangeNotifier {
     _api?.close();
     _api = null;
     _androidSessionId = null;
+    aegisDaemon.stop();
     status = ConnStatus.disconnected;
     connectedAt = null;
     traffic.reset();
@@ -669,6 +772,7 @@ class AppState extends ChangeNotifier {
         await core.stop();
       }
     }
+    await aegisDaemon.stop();
   }
 
   Future<void> _waitForApi(MihomoApi api) async {

@@ -1,8 +1,8 @@
 /// Aegis profile presets.
 ///
-/// Aegis is a branding/transport layer: each preset maps onto a concrete
-/// Mihomo outbound so the app stays compatible with the stock core. The VPS
-/// panel (aegis/install.sh) generates matching sing-box inbounds.
+/// Aegis is now a custom protocol implementation (aegis-go) that runs as a
+/// local SOCKS5 proxy. The presets below are kept for backward compatibility
+/// with old `aegis://` links, but new connections should use AEGIS Native.
 library;
 
 /// One Aegis preset: stable id used in `aegis://` links plus the human label

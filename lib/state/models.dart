@@ -13,6 +13,7 @@ class Profile {
     this.proxyCount = 0,
     this.hasTrafficInfo = false,
     this.hasExpiryInfo = false,
+    this.aegisConfig,
   });
 
   final String id;
@@ -27,7 +28,13 @@ class Profile {
   bool hasTrafficInfo;
   bool hasExpiryInfo;
 
+  /// AEGIS native connection config (server, port, secret, listen port).
+  /// When set, this profile uses our custom AEGIS protocol instead of
+  /// parsing share links.
+  Map<String, dynamic>? aegisConfig;
+
   bool get isRemote => url != null;
+  bool get isAegisNative => aegisConfig != null;
   int get used => upload + download;
   double? get usage => total > 0 ? (used / total).clamp(0, 1).toDouble() : null;
 
@@ -43,6 +50,7 @@ class Profile {
     'proxyCount': proxyCount,
     'hasTrafficInfo': hasTrafficInfo,
     'hasExpiryInfo': hasExpiryInfo,
+    'aegisConfig': aegisConfig,
   };
 
   factory Profile.fromJson(Map<String, dynamic> j) => Profile(
@@ -61,6 +69,7 @@ class Profile {
         ((j['total'] as num?)?.toInt() ?? 0) > 0,
     hasExpiryInfo:
         (j['hasExpiryInfo'] as bool?) ?? j['expire'] != null,
+    aegisConfig: j['aegisConfig'] as Map<String, dynamic>?,
   );
 
   void applyUserInfo(String? header) {
