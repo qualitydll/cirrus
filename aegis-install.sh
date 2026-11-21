@@ -2,7 +2,7 @@
 # AEGIS Server Installer — installs the AEGIS Go daemon on VPS
 set -e
 
-AEGIS_VERSION="latest"
+AEGIS_VERSION="aegis-v1.0.1"
 AEGIS_DIR="/opt/aegis"
 AEGIS_BIN="$AEGIS_DIR/aegis"
 AEGIS_PORT=8443
@@ -70,13 +70,13 @@ echo "Downloading $BINARY_NAME for $OS/$ARCH..."
 mkdir -p "$AEGIS_DIR"
 
 # Download directly from GitHub release (most reliable)
-DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.0/$BINARY_NAME"
+DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.1/$BINARY_NAME"
 echo "Downloading from: $DOWNLOAD_URL"
 
 if ! curl -fsSL "$DOWNLOAD_URL" -o "$AEGIS_BIN"; then
     echo "Failed to download $BINARY_NAME from GitHub release"
     echo "Please download manually from:"
-    echo "  https://github.com/qualitydll/cirrus/releases/tag/aegis-v1.0.0"
+    echo "  https://github.com/qualitydll/cirrus/releases/tag/aegis-v1.0.1"
     echo "And place it at: $AEGIS_BIN"
     exit 1
 fi

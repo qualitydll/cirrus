@@ -1,5 +1,5 @@
 #!/bin/bash
-# AEGIS VPS Installer - Downloads from GitHub Actions artifacts
+# AEGIS VPS Installer - Downloads from GitHub Release
 set -e
 
 echo "=== AEGIS VPS Installer ==="
@@ -15,19 +15,27 @@ esac
 echo "Downloading aegis-linux-$ARCH..."
 mkdir -p /opt/aegis
 
-# Get latest successful build
-LATEST_RUN=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/workflows/aegis-build.yml/runs?per_page=1&branch=main&status=success" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['workflow_runs'][0]['id']) if data.get('workflow_runs') else ''")
+# Download from GitHub Release
+echo "Downloading from GitHub release..."
+DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.1/aegis-linux-$ARCH"
 
-if [ -z "$LATEST_RUN" ]; then
-    echo "No successful build found"
-    exit 1
-fi
-
-echo "Found build: $LATEST_RUN"
-
-# Get artifacts
-ARTIFACTS=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/runs/$LATEST_RUN/artifacts")
-ARTIFACT_ID=$(echo "$ARTIFACTS" | python3 -c "
+if curl -fsSL "$DOWNLOAD_URL" -o /opt/aegis/aegis; then
+    chmod +x /opt/aegis/aegis
+    echo "Downloaded from release"
+else
+    echo "Failed to download from release, trying artifacts..."
+    
+    # Fallback to artifacts
+    LATEST_RUN=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/workflows/aegis-build.yml/runs?per_page=1&branch=main&status=success" | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['workflow_runs'][0]['id']) if data.get('workflow_runs') else ''")
+    
+    if [ -z "$LATEST_RUN" ]; then
+        echo "No successful build found"
+        exit 1
+    fi
+    
+    echo "Found build: $LATEST_RUN"
+    
+    ARTIFACT_ID=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/runs/$LATEST_RUN/artifacts" | python3 -c "
 import sys, json
 data = json.load(sys.stdin)
 for a in data.get('artifacts', []):
@@ -35,18 +43,18 @@ for a in data.get('artifacts', []):
         print(a['id'])
         break
 ")
-
-if [ -z "$ARTIFACT_ID" ]; then
-    echo "Artifact not found"
-    exit 1
-fi
-
-echo "Downloading artifact $ARTIFACT_ID..."
-curl -fsSL "https://api.github.com/repos/qualitydll/cirrus/actions/artifacts/$ARTIFACT_ID/zip" -o /tmp/aegis.zip
-
-# Extract
-cd /tmp
-python3 -c "
+    
+    if [ -z "$ARTIFACT_ID" ]; then
+        echo "Artifact not found"
+        exit 1
+    fi
+    
+    echo "Downloading artifact $ARTIFACT_ID..."
+    curl -fsSL "https://api.github.com/repos/qualitydll/cirrus/actions/artifacts/$ARTIFACT_ID/zip" -o /tmp/aegis.zip
+    
+    # Extract
+    cd /tmp
+    python3 -c "
 import zipfile
 with zipfile.ZipFile('aegis.zip', 'r') as z:
     for name in z.namelist():
@@ -54,18 +62,19 @@ with zipfile.ZipFile('aegis.zip', 'r') as z:
             z.extract(name, '/opt/aegis/')
             print(f'Extracted: {name}')
 "
-
-# Rename and setup
-mv /opt/aegis/aegis-linux-$ARCH /opt/aegis/aegis
-chmod +x /opt/aegis/aegis
-rm /tmp/aegis.zip
+    
+    mv /opt/aegis/aegis-linux-$ARCH /opt/aegis/aegis
+    chmod +x /opt/aegis/aegis
+    rm /tmp/aegis.zip
+fi
 
 # Generate secret
 SECRET=$(openssl rand -hex 32)
 echo "Secret: $SECRET"
+echo ""
 
 # Create service
-cat > /etc/systemd/system/aegis.service <<EOF
+cat > /etc/systemd/system/aegis.service <<EOFSERVICE
 [Unit]
 Description=AEGIS VPN Server
 After=network.target
@@ -78,12 +87,13 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOFSERVICE
 
 systemctl daemon-reload
 systemctl enable aegis
 systemctl start aegis
 
+echo ""
 echo "=== Installation Complete ==="
 echo "Server: $(hostname -I | awk '{print $1}'):8443"
 echo "Secret: $SECRET"

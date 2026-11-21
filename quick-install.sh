@@ -12,7 +12,7 @@ esac
 
 echo "Downloading aegis-linux-$ARCH..."
 mkdir -p /opt/aegis
-curl -fsSL "https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.0/aegis-linux-$ARCH" -o /opt/aegis/aegis
+curl -fsSL "https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.1/aegis-linux-$ARCH" -o /opt/aegis/aegis
 chmod +x /opt/aegis/aegis
 
 # Generate secret

@@ -2,7 +2,7 @@
 # AEGIS Server Installer - Fixed version
 set -e
 
-AEGIS_VERSION="aegis-v1.0.0"
+AEGIS_VERSION="aegis-v1.0.1"
 AEGIS_DIR="/opt/aegis"
 AEGIS_BIN="$AEGIS_DIR/aegis"
 AEGIS_PORT=8443
