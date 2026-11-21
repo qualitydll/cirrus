@@ -1,10 +1,8 @@
 package main
 
 import (
-	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"io"
 	"net"
 	"sync"
 	"time"
@@ -269,7 +267,7 @@ func (s *UDPServer) handlePacket(data []byte, addr *net.UDPAddr) {
 		// Create new session for SYN packets
 		if pkt.Type == UDPTypeSYN {
 			session = NewUDPSession(addr, s.listenAddr)
-			s.sessionID = pkt.SessionID // Use client's session ID
+			session.ID = pkt.SessionID // Use client's session ID
 			s.sessions[pkt.SessionID] = session
 			s.logger("[UDP] New session from %s (ID: %d)", addr, pkt.SessionID)
 		} else {
@@ -652,7 +650,7 @@ func (p *UDPProxyServer) Listen() error {
 func (p *UDPProxyServer) proxyLoop(conn *net.UDPConn) {
 	buffer := make([]byte, 65535)
 	for !p.closed {
-		n, addr, err := conn.ReadFromUDP(buffer)
+		n, _, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			if !p.closed {
 				p.logger("[UDP] Read error: %v", err)
