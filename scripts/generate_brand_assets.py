@@ -11,7 +11,7 @@ ICON_ARCHIVE = ROOT / "Cirrus_Icons_Windows_Android.zip"
 ASSET_DIR = ROOT / "assets" / "images"
 # Prefer the original source file when present, but the optimized logo is
 # already tracked in the repository and is a valid fallback for clean CI runs.
-SOURCE_CANDIDATES = (ROOT / "icon.png", ASSET_DIR / "cirrus_logo.png")
+SOURCE_CANDIDATES = (ROOT / "cirrus_icon_source.jpg", ROOT / "icon.png", ASSET_DIR / "cirrus_logo.png")
 ANDROID_RES = ROOT / "android" / "app" / "src" / "main" / "res"
 WINDOWS_ICON = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
 ANDROID_SIZES = {
@@ -103,7 +103,7 @@ def main() -> None:
         raise FileNotFoundError(f"No brand image found. Checked: {expected}")
 
     print(f"Using repository brand source: {source_path.relative_to(ROOT)}")
-    images = load_archive()
+    # Ignore the legacy Brew icon archive: Cirrus branding must come only from\n    # the current Cirrus source artwork, never from stale bundled icons.\n    images = []
     with Image.open(source_path) as original:
         original.load()
         source = best_source(images, original)
