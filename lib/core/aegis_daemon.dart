@@ -85,14 +85,14 @@ class AegisDaemon {
       _process = proc;
 
       proc.stdout
-          .transform(const LineSplitter())
+          .transform(LineSplitter())
           .listen((line) {
             sink.writeln(line);
             onLine?.call(line);
           });
 
       proc.stderr
-          .transform(const LineSplitter())
+          .transform(LineSplitter())
           .listen((line) {
             sink.writeln('ERROR: $line');
             onLine?.call('ERROR: $line');

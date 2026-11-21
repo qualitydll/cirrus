@@ -857,7 +857,7 @@ class _HelpItem extends StatelessWidget {
 
 /// Dialog for adding AEGIS native profile (custom protocol).
 Future<void> _showAegisNativeDialog(BuildContext context) async {
-  return showGeneralDialog(
+  await showGeneralDialog(
     context: context,
     barrierDismissible: true,
     barrierLabel: 'aegis-native',
