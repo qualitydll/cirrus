@@ -110,7 +110,7 @@ def main() -> None:
 
     # Downsample app artwork so oversized source files do not inflate decoded
     # Flutter image memory. The uploaded archive remains untouched in git.
-    app_art = fit(source, 512, 0.94)
+    app_art = fit(source, 512, 0.98)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     app_art.save(ASSET_DIR / "cirrus_logo.png", format="PNG", optimize=True)
     app_art.save(ROOT / "cirrus_icon.png", format="PNG", optimize=True)
@@ -121,7 +121,7 @@ def main() -> None:
 
     foreground_dir = ANDROID_RES / "drawable"
     foreground_dir.mkdir(parents=True, exist_ok=True)
-    fit(source, 432, 0.68).save(
+    fit(source, 432, 0.98).save(
         foreground_dir / "ic_cirrus_foreground_image.png", format="PNG", optimize=True
     )
 
@@ -129,7 +129,7 @@ def main() -> None:
         target_dir = ANDROID_RES / folder
         target_dir.mkdir(parents=True, exist_ok=True)
         exact = exact_size_source(images, size)
-        icon = exact if exact is not None else fit(source, size, 0.70)
+        icon = exact if exact is not None else fit(source, size, 0.98)
         icon.save(target_dir / "ic_launcher.png", format="PNG", optimize=True)
         print(f"Android icon {folder}: {size}x{size} ({'from ZIP' if exact is not None else 'resized from source'})")
 
@@ -146,7 +146,7 @@ def main() -> None:
         WINDOWS_ICON.write_bytes(selected_ico[1])
         print(f"Windows EXE icon: {selected_ico[0]} (copied unchanged)")
     else:
-        fit(source, 256, 0.78).convert("RGB").save(
+        fit(source, 256, 0.98).convert("RGB").save(
             WINDOWS_ICON,
             format="ICO",
             sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
