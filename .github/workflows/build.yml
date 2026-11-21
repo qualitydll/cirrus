@@ -92,20 +92,20 @@ jobs:
           }
           $trayIcon = "windows/runner/resources/app_icon.ico"
           if (!(Test-Path $trayIcon)) {
-            throw "Required Brew tray icon was not found: $trayIcon"
+            throw "Required Cirrus tray icon was not found: $trayIcon"
           }
-          Copy-Item $trayIcon (Join-Path $release "brew_tray.ico") -Force
-          if (!(Test-Path (Join-Path $release "brew_tray.ico"))) {
-            throw "Brew tray icon was not bundled."
+          Copy-Item $trayIcon (Join-Path $release "cirrus_tray.ico") -Force
+          if (!(Test-Path (Join-Path $release "cirrus_tray.ico"))) {
+            throw "Cirrus tray icon was not bundled."
           }
-          if (!(Test-Path (Join-Path $release "brew.exe"))) {
-            throw "Windows build did not produce brew.exe."
+          if (!(Test-Path (Join-Path $release "cirrus.exe"))) {
+            throw "Windows build did not produce cirrus.exe."
           }
 
       - name: Upload Windows release
         uses: actions/upload-artifact@v4
         with:
-          name: brew-windows
+          name: cirrus-windows
           path: build/windows/x64/runner/Release/
           if-no-files-found: error
           retention-days: 30
