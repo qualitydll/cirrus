@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -95,18 +94,15 @@ Future<VpsDeployResult> deployAegis(
             SftpFileOpenMode.truncate |
             SftpFileOpenMode.write,
       );
-      final uploader = await file.write(
-        Stream<Uint8List>.value(
-          bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
-        ),
+      await file.writeBytes(
+        bytes.buffer.asUint8List(bytes.offsetInBytes, bytes.lengthInBytes),
       );
-      await uploader.done;
       await file.close();
     }
     final chmod = await client.runWithResult(
       'chmod +x /tmp/aegis_deploy/install.sh',
     );
-    if (chmod.exitCode != 0) {
+    if ((chmod.exitCode ?? -1) != 0) {
       throw Exception('chmod failed: ${utf8.decode(chmod.stderr)}');
     }
 
@@ -118,13 +114,13 @@ Future<VpsDeployResult> deployAegis(
     for (final line in out.split('\n')) {
       if (line.trim().isNotEmpty) both('  $line');
     }
-    if (result.exitCode != 0) {
+    if ((result.exitCode ?? -1) != 0) {
       throw Exception('Установка завершилась с ошибкой (код ${result.exitCode})');
     }
 
     both('→ reading panel credentials …');
     final stateRes = await client.runWithResult('cat /etc/aegis/state.json');
-    if (stateRes.exitCode != 0) {
+    if ((stateRes.exitCode ?? -1) != 0) {
       throw Exception('state.json не найден — установка не завершилась');
     }
     final state = jsonDecode(utf8.decode(stateRes.stdout))
@@ -160,6 +156,12 @@ Future<VpsDeployResult> deployAegis(
     );
   } on TimeoutException {
     throw Exception('Таймаут — установка заняла слишком много времени');
+  } on SSHAuthFailError {
+    throw Exception(
+      'SSH: сервер отклонил логин/пароль. Проверь credentials или '
+      'используй приватный ключ (на сервере может быть выключен '
+      'PasswordAuthentication).',
+    );
   } catch (e) {
     if (e is Exception) rethrow;
     throw Exception('Ошибка подключения: $e');

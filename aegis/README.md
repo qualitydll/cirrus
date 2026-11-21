@@ -44,13 +44,13 @@ aegis://turbo.s3cret@203.0.113.7:443?sni=www.bing.com&obfs=salamander&obfs-passw
 **Вручную:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/qualitydll/brew/main/aegis/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis/install.sh | bash
 ```
 
 или из клона репозитория:
 
 ```bash
-git clone https://github.com/qualitydll/brew && cd brew/aegis
+git clone https://github.com/qualitydll/cirrus && cd cirrus/aegis
 bash install.sh
 ```
 

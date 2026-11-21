@@ -6,7 +6,7 @@
 
 Минималистичный VPN-клиент для **Windows и Android** на Flutter с сетевым ядром Mihomo.
 
-[Скачать сборки](https://github.com/qualitydll/brew/actions) · [Сообщить об ошибке](https://github.com/qualitydll/brew/issues) · [История изменений](https://github.com/qualitydll/brew/commits/main)
+[Скачать сборки](https://github.com/qualitydll/cirrus/actions) · [Сообщить об ошибке](https://github.com/qualitydll/cirrus/issues) · [История изменений](https://github.com/qualitydll/cirrus/commits/main)
 
 ![Платформы](https://img.shields.io/badge/platforms-Windows%20%7C%20Android-1F4E79?style=flat-square)
 ![Flutter](https://img.shields.io/badge/UI-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)
@@ -51,7 +51,7 @@
 Серверная часть — панель и автоустановщик в каталоге [`aegis/`](aegis/):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/qualitydll/brew/main/aegis/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis/install.sh | bash
 ```
 
 Установщик поднимает sing-box, веб-панель с генерацией нод и меню `aegis` на VPS и сразу выдаёт готовую subscription-ссылку. Подробнее — в [aegis/README.md](aegis/README.md).
@@ -68,7 +68,7 @@ curl -fsSL https://raw.githubusercontent.com/qualitydll/brew/main/aegis/install.
 
 ## Скачать
 
-1. Откройте [GitHub Actions](https://github.com/qualitydll/brew/actions/workflows/build.yml).
+1. Откройте [GitHub Actions](https://github.com/qualitydll/cirrus/actions/workflows/build.yml).
 2. Выберите успешный запуск сборки.
 3. В разделе **Artifacts** скачайте артефакт для своей платформы: windows-release или android-release-arm64.
 
@@ -119,7 +119,7 @@ flutter build windows --release
 
 ## Сообщить об ошибке
 
-Создайте [Issue](https://github.com/qualitydll/brew/issues) и укажите платформу, версию, шаги воспроизведения и текст ошибки. Не прикладывайте секретные ссылки или учётные данные.
+Создайте [Issue](https://github.com/qualitydll/cirrus/issues) и укажите платформу, версию, шаги воспроизведения и текст ошибки. Не прикладывайте секретные ссылки или учётные данные.
 
 ## Лицензия и сторонние компоненты
 

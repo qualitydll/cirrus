@@ -142,7 +142,10 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: 'platform-tools platforms;android-36 build-tools;36.0.0 ndk;28.0.13004108'
+          packages: 'platform-tools platforms;android-35 platforms;android-36 build-tools;36.0.0 ndk;28.0.13004108'
+
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses || true
 
       - name: Install dependencies
         run: flutter pub get
@@ -178,7 +181,7 @@ jobs:
             exit 1
           fi
           unzip -Z1 "$apk" | grep -qx 'assets/flutter_assets/assets/images/cirrus_logo.png'
-          echo "Cirrus APK package, VPN service, logo, and ARM64 Mihomo libraries verified."
+          echo "APK package, VPN service, logo, and ARM64 Mihomo libraries verified."
 
       - name: Upload Android APK
         uses: actions/upload-artifact@v4

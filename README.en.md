@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/qualitydll/cirrus-client-/main/cirrusbanner.png" alt="Cirrus. — project banner" width="100%" />
+<img src="https://raw.githubusercontent.com/qualitydll/cirrus/main/cirrusbanner.png" alt="Cirrus. — project banner" width="100%" />
 
 # Cirrus.
 
@@ -42,7 +42,7 @@ A successful CI build does not replace testing on a real device and does not gua
 
 ## Download
 
-1. Open [GitHub Actions](https://github.com/qualitydll/cirrus-client-/actions/workflows/build.yml).
+1. Open [GitHub Actions](https://github.com/qualitydll/cirrus/actions/workflows/build.yml).
 2. Select a successful build run.
 3. Find **Artifacts** near the bottom of the run page.
 4. Download <code>android-release-arm64</code> or <code>windows-release</code>.
@@ -102,7 +102,7 @@ flutter run -d windows</code></pre>
 
 ## Contributing
 
-Found a bug or have an idea? Open an [Issue](https://github.com/qualitydll/cirrus-client-/issues). Include the platform, reproduction steps, and error message, after removing secrets from logs.
+Found a bug or have an idea? Open an [Issue](https://github.com/qualitydll/cirrus/issues). Include the platform, reproduction steps, and error message, after removing secrets from logs.
 
 ---
 

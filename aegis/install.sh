@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Aegis installer — run on a fresh VPS:
-#   curl -fsSL https://raw.githubusercontent.com/qualitydll/brew/main/aegis/install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis/install.sh | bash
 # or from a local copy:  bash install.sh
 set -euo pipefail
 
@@ -9,7 +9,7 @@ PANEL_PORT="${AEGIS_PANEL_PORT:-8901}"
 SINGBOX_BIN="${SINGBOX_BIN:-/usr/local/bin/sing-box}"
 SINGBOX_CONF="/etc/sing-box/config.json"
 SINGBOX_VER="${SINGBOX_VER:-1.12.4}"
-PANEL_REPO="${PANEL_REPO:-https://raw.githubusercontent.com/qualitydll/brew/main/aegis}"
+PANEL_REPO="${PANEL_REPO:-https://raw.githubusercontent.com/qualitydll/cirrus/main/aegis}"
 PYBIN="$(command -v python3 || echo /usr/bin/python3)"
 
 say()  { printf '\033[1;36m[*]\033[0m %s\n' "$*"; }
