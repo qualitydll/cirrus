@@ -10,9 +10,7 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"strings"
 	"sync"
-	"time"
 )
 
 // WebSocket Protocol Constants
@@ -56,11 +54,11 @@ func NewWSConnection(conn net.Conn, isServer bool) *WSConnection {
 }
 
 // WSHandshake performs WebSocket handshake
-func (ws *WSConnection) WSHandshake() error {
+func (ws *WSConnection) WSHandshake(path, host string) error {
 	if ws.isServer {
 		return ws.handleServerHandshake()
 	}
-	return ws.handleClientHandshake()
+	return ws.handleClientHandshake(path, host)
 }
 
 // handleServerHandshake handles server-side WebSocket handshake
@@ -378,7 +376,7 @@ func (s *WSServer) handleConnection(conn net.Conn) {
 	}
 
 	// Perform handshake
-	if err := ws.WSHandshake(); err != nil {
+	if err := ws.WSHandshake("/aegis", ""); err != nil {
 		s.logger("[WS] Handshake failed: %v", err)
 		conn.Close()
 		return
@@ -542,11 +540,6 @@ func runWSClient(serverAddr, secret, listenAddr string) error {
 	serverTCP, err := net.ResolveTCPAddr("tcp", serverAddr)
 	if err != nil {
 		return fmt.Errorf("invalid server address: %w", err)
-	}
-
-	listenTCP, err := net.ResolveTCPAddr("tcp", listenAddr)
-	if err != nil {
-		return fmt.Errorf("invalid listen address: %w", err)
 	}
 
 	// TODO: Implement WebSocket proxy server
