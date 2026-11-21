@@ -409,16 +409,54 @@ class _AddDialogState extends State<_AddDialog> {
   final _params = TextEditingController();
   String? _error;
   bool _busy = false;
+  bool _aegisOpen = false;
 
-  /// 0 — paste subscription/key, 1 — manual Aegis node.
-  int _mode = 0;
   String _preset = 'turbo';
   bool _cdn = false;
 
   /// Presets that can traverse a CDN (Cloudflare only proxies HTTP-family
   /// transports — UDP and REALITY camouflage cannot pass through it).
   static const _cdnPresets = {'cfws', 'cfgrpc'};
-  static const _presetPorts = {'turbo': '443', 'eco': '8443', 'cfws': '443', 'cfgrpc': '443'};
+  static const _presetPorts = {
+    'turbo': '443',
+    'eco': '8443',
+    'cfws': '443',
+    'cfgrpc': '443',
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _detectPresetFromInput();
+    _input.addListener(_detectPresetFromInput);
+  }
+
+  @override
+  void dispose() {
+    _input.dispose();
+    _name.dispose();
+    _host.dispose();
+    _port.dispose();
+    _auth.dispose();
+    _params.dispose();
+    super.dispose();
+  }
+
+  /// If the pasted text is an `aegis://` link, preselect its preset and the
+  /// CDN flag so the advanced section reflects what the link actually is.
+  void _detectPresetFromInput() {
+    final m = RegExp(r'aegis://([a-z0-9]+)\.').firstMatch(_input.text.trim());
+    if (m == null) return;
+    final id = m.group(1)!;
+    if (!aegisPresets.containsKey(id)) return;
+    final cdn = _cdnPresets.contains(id);
+    if (id == _preset && cdn == _cdn) return;
+    setState(() {
+      _preset = id;
+      _cdn = cdn;
+      _port.text = _presetPorts[id] ?? '443';
+    });
+  }
 
   void _selectPreset(String id) {
     setState(() {
@@ -456,7 +494,7 @@ class _AddDialogState extends State<_AddDialog> {
 
   Future<void> _submit() async {
     String input = _input.text;
-    if (_mode == 1) {
+    if (_aegisOpen && (_host.text.trim().isNotEmpty || _auth.text.trim().isNotEmpty)) {
       final link = _buildAegisLink();
       if (link == null) {
         setState(() => _error = 'Укажите хост и ключ/пароль ноды');
@@ -551,45 +589,45 @@ class _AddDialogState extends State<_AddDialog> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(
-                    value: 0,
-                    icon: Icon(Icons.link_rounded),
-                    label: Text('Ссылка'),
-                  ),
-                  ButtonSegment(
-                    value: 1,
-                    icon: Icon(Icons.bolt_rounded),
-                    label: Text('Aegis-нода'),
-                  ),
-                ],
-                selected: {_mode},
-                onSelectionChanged: _busy
-                    ? null
-                    : (s) => setState(() => _mode = s.first),
-              ),
-              const SizedBox(height: 14),
-              if (_mode == 0) ...[
-                TextField(
-                  controller: _input,
-                  autofocus: true,
-                  minLines: 3,
-                  maxLines: 6,
-                  decoration: InputDecoration(
-                    hintText:
-                        'https://… или aegis://…, по одной ссылке на строку',
-                    suffixIcon: IconButton(
-                      tooltip: 'Вставить',
-                      onPressed: _paste,
-                      icon: const Icon(Icons.content_paste_rounded),
-                    ),
+              TextField(
+                controller: _input,
+                autofocus: true,
+                minLines: 3,
+                maxLines: 6,
+                decoration: InputDecoration(
+                  hintText:
+                      'https://… или aegis://…, по одной ссылке на строку',
+                  suffixIcon: IconButton(
+                    tooltip: 'Вставить',
+                    onPressed: _paste,
+                    icon: const Icon(Icons.content_paste_rounded),
                   ),
                 ),
-              ] else ...[
-                Row(
+              ),
+              const SizedBox(height: 4),
+              Theme(
+                data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+                child: ExpansionTile(
+                  initiallyExpanded: _aegisOpen,
+                  onExpansionChanged: (v) => setState(() => _aegisOpen = v),
+                  tilePadding: EdgeInsets.zero,
+                  childrenPadding: const EdgeInsets.only(bottom: 8),
+                  leading: Icon(
+                    Icons.bolt_rounded,
+                    color: scheme.primary,
+                    size: 20,
+                  ),
+                  title: const Text(
+                    'Aegis-нода вручную',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Для энтузиастов — необязательно для обычных нужд',
+                    style: TextStyle(fontSize: 12),
+                  ),
                   children: [
-                    Expanded(
+                    Align(
+                      alignment: Alignment.centerLeft,
                       child: Wrap(
                         spacing: 8,
                         runSpacing: 4,
@@ -617,9 +655,8 @@ class _AddDialogState extends State<_AddDialog> {
                       onPressed: _showPresetHelp,
                       icon: const Icon(Icons.help_outline_rounded),
                     ),
-                  ],
-                ),
-                CheckboxListTile(
+                    const SizedBox(height: 4),
+                    CheckboxListTile(
                   value: _cdn,
                   onChanged: _busy ? null : (v) => _toggleCdn(v ?? false),
                   title: const Text('Через CDN (Cloudflare)'),
@@ -674,7 +711,9 @@ class _AddDialogState extends State<_AddDialog> {
                     hintText: 'sni=…&path=…&pbk=…&sid=…',
                   ),
                 ),
-              ],
+                  ],
+                ),
+              ),
               const SizedBox(height: 12),
               TextField(
                 controller: _name,
