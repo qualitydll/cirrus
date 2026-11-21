@@ -6,10 +6,21 @@ set -euo pipefail
 
 AEGIS_HOME="${AEGIS_HOME:-/etc/aegis}"
 PANEL_PORT="${AEGIS_PANEL_PORT:-8901}"
-SINGBOX_BIN="/usr/local/bin/sing-box"
+SINGBOX_BIN="${SINGBOX_BIN:-/usr/local/bin/sing-box}"
 SINGBOX_CONF="/etc/sing-box/config.json"
 SINGBOX_VER="${SINGBOX_VER:-1.12.4}"
 PANEL_REPO="${PANEL_REPO:-https://raw.githubusercontent.com/qualitydll/brew/main/aegis}"
+PYBIN="$(command -v python3 || echo /usr/bin/python3)"
+
+say()  { printf '\033[1;36m[*]\033[0m %s\n' "$*"; }
+ok()   { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
+die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
+
+has_systemd() {
+  [ -d /run/systemd/system ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]
+}
+
 PANEL_PY_LOCAL="$(cd "$(dirname "${BASH_SOURCE[0]:--}")" 2>/dev/null && pwd)/aegis_panel.py"
 if [ -f "$PANEL_PY_LOCAL" ]; then
   PANEL_PY="$PANEL_PY_LOCAL"
@@ -19,15 +30,13 @@ else
     || die "cannot fetch aegis_panel.py (set PANEL_REPO or run from repo)"
 fi
 
-say()  { printf '\033[1;36m[*]\033[0m %s\n' "$*"; }
-ok()   { printf '\033[1;32m[+]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[!]\033[0m %s\n' "$*"; }
-die()  { printf '\033[1;31m[x]\033[0m %s\n' "$*" >&2; exit 1; }
-
 [ "$(id -u)" -eq 0 ] || die "run as root (sudo bash install.sh)"
 command -v python3 >/dev/null || die "python3 not found"
 command -v curl >/dev/null || die "curl not found"
 command -v openssl >/dev/null || die "openssl not found"
+
+SYSTEMD_OK=0
+has_systemd && SYSTEMD_OK=1
 
 # ------------------------------------------------------------- sing-box
 if [ ! -x "$SINGBOX_BIN" ]; then
@@ -60,6 +69,7 @@ if [ ! -f "$SINGBOX_CONF" ]; then
 EOF
 fi
 
+if [ "$SYSTEMD_OK" -eq 1 ]; then
 cat > /etc/systemd/system/sing-box.service <<'EOF'
 [Unit]
 Description=sing-box service
@@ -77,6 +87,10 @@ EOF
 systemctl daemon-reload
 systemctl enable --now sing-box >/dev/null 2>&1 || true
 ok "sing-box service ready"
+else
+warn "no systemd detected — sing-box installed but not autostarted"
+warn "start manually: $SINGBOX_BIN run -c $SINGBOX_CONF"
+fi
 
 # ------------------------------------------------------------- certs
 mkdir -p "$AEGIS_HOME/certs" /opt/aegis
@@ -97,6 +111,7 @@ fi
 chmod 755 /opt/aegis/aegis_panel.py
 [ -f /opt/aegis/install.sh ] && chmod 755 /opt/aegis/install.sh || true
 
+if [ "$SYSTEMD_OK" -eq 1 ]; then
 cat > /etc/systemd/system/aegis-panel.service <<EOF
 [Unit]
 Description=Aegis control panel
@@ -105,7 +120,7 @@ After=network.target sing-box.service
 [Service]
 Environment=AEGIS_HOME=$AEGIS_HOME
 Environment=AEGIS_PANEL_PORT=$PANEL_PORT
-ExecStart=/usr/bin/python3 /opt/aegis/aegis_panel.py
+ExecStart=$PYBIN /opt/aegis/aegis_panel.py
 Restart=always
 RestartSec=3
 
@@ -115,18 +130,26 @@ EOF
 systemctl daemon-reload
 systemctl enable --now aegis-panel >/dev/null 2>&1 || true
 ok "aegis-panel service installed"
+else
+warn "no systemd — start panel manually:"
+warn "  AEGIS_HOME=$AEGIS_HOME AEGIS_PANEL_PORT=$PANEL_PORT $PYBIN /opt/aegis/aegis_panel.py &"
+fi
 
 # ------------------------------------------------------------- menu
 cat > /usr/local/bin/aegis <<'EOF'
 #!/usr/bin/env bash
 # Aegis menu — VPS control shortcut
 STATE=/etc/aegis/state.json
-TOKEN=$(python3 -c "import json;print(json.load(open('$STATE'))['token'])" 2>/dev/null || echo "")
-SUB=$(python3 -c "import json;print(json.load(open('$STATE'))['sub_token'])" 2>/dev/null || echo "")
-IP=$(hostname -I | awk '{print $1}')
+PYBIN=$(command -v python3 || echo /usr/bin/python3)
+TOKEN=$($PYBIN -c "import json;print(json.load(open('$STATE'))['token'])" 2>/dev/null || echo "")
+SUB=$($PYBIN -c "import json;print(json.load(open('$STATE'))['sub_token'])" 2>/dev/null || echo "")
+IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+[ -z "$IP" ] && IP=$(hostname -i 2>/dev/null | awk '{print $1}')
+[ -z "$IP" ] && IP=127.0.0.1
 PORT=${AEGIS_PANEL_PORT:-8901}
 URL="http://${IP}:${PORT}/?k=${TOKEN}"
 SUBURL="http://${IP}:${PORT}/sub/${SUB}"
+if [ -d /run/systemd/system ] || [ "$(cat /proc/1/comm 2>/dev/null)" = "systemd" ]; then HAS_SYSTEMD=1; else HAS_SYSTEMD=0; fi
 
 menu() {
   clear
@@ -156,10 +179,10 @@ while true; do
     2) echo "$SUBURL" | tee /dev/tty | xclip -selection clipboard 2>/dev/null || true
        echo "(also copied to clipboard if xclip installed)"; read -rp "press enter" _ ;;
     3) echo "$URL"; read -rp "press enter" _ ;;
-    4) systemctl restart aegis-panel && echo "panel restarted"; read -rp "press enter" _ ;;
-    5) systemctl restart sing-box && echo "sing-box restarted"; read -rp "press enter" _ ;;
-    6) journalctl -u aegis-panel -f --no-pager ;;
-    7) journalctl -u sing-box -f --no-pager ;;
+    4) if [ "$HAS_SYSTEMD" -eq 1 ]; then systemctl restart aegis-panel && echo "panel restarted"; else echo "no systemd — restart manually"; fi; read -rp "press enter" _ ;;
+    5) if [ "$HAS_SYSTEMD" -eq 1 ]; then systemctl restart sing-box && echo "sing-box restarted"; else echo "no systemd — restart manually"; fi; read -rp "press enter" _ ;;
+    6) if [ "$HAS_SYSTEMD" -eq 1 ]; then journalctl -u aegis-panel -f --no-pager; else echo "no systemd logs"; read -rp "press enter" _; fi ;;
+    7) if [ "$HAS_SYSTEMD" -eq 1 ]; then journalctl -u sing-box -f --no-pager; else echo "no systemd logs"; read -rp "press enter" _; fi ;;
     8) bash /opt/aegis/install.sh; read -rp "press enter" _ ;;
     0) exit 0 ;;
     *) echo "?"; sleep 1 ;;
@@ -177,7 +200,9 @@ fi
 
 # ------------------------------------------------------------- summary
 sleep 1
-HOST="$(hostname -I | awk '{print $1}')"
+HOST="$(hostname -I 2>/dev/null | awk '{print $1}')"
+[ -z "$HOST" ] && HOST="$(hostname -i 2>/dev/null | awk '{print $1}')"
+[ -z "$HOST" ] && HOST=127.0.0.1
 TOKEN="$(python3 -c "import json;print(json.load(open('$AEGIS_HOME/state.json'))['token'])")"
 SUBT="$(python3 -c "import json;print(json.load(open('$AEGIS_HOME/state.json'))['sub_token'])")"
 

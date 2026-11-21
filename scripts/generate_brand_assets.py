@@ -1,159 +1,87 @@
 from __future__ import annotations
 
-from io import BytesIO
 from pathlib import Path
-import zipfile
 
 from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parents[1]
-ICON_ARCHIVE = ROOT / "Cirrus_Icons_Windows_Android.zip"
 ASSET_DIR = ROOT / "assets" / "images"
-# Prefer the original source file when present, but the optimized logo is
-# already tracked in the repository and is a valid fallback for clean CI runs.
-SOURCE_CANDIDATES = (ROOT / "cirrus_icon_source.jpg", ROOT / "icon.png", ASSET_DIR / "cirrus_logo.png")
+# The tracked source logo placed by the project owner.
+SOURCE = ASSET_DIR / "cirrus_icon.png"
 ANDROID_RES = ROOT / "android" / "app" / "src" / "main" / "res"
 WINDOWS_ICON = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
-ANDROID_SIZES = {
+LAUNCHER_SIZES = {
     "mipmap-mdpi": 48,
     "mipmap-hdpi": 72,
     "mipmap-xhdpi": 96,
     "mipmap-xxhdpi": 144,
     "mipmap-xxxhdpi": 192,
 }
+# Brand accent — keep in sync with lib/brand.dart kCirrusBlue.
+BRAND_BG = (0x1F, 0x4E, 0x79, 255)
 
 
-def fit(image: Image.Image, size: int, safe_fraction: float = 0.78) -> Image.Image:
+def contain(image: Image.Image, box: int, fraction: float) -> Image.Image:
+    """Fit image inside a square canvas, scaled to `fraction` of the box."""
     source = image.convert("RGBA")
-    safe_size = max(1, int(size * safe_fraction))
-    fitted = ImageOps.contain(source, (safe_size, safe_size), method=Image.Resampling.LANCZOS)
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    canvas.alpha_composite(fitted, ((size - fitted.width) // 2, (size - fitted.height) // 2))
+    inner = max(1, int(box * fraction))
+    fitted = ImageOps.contain(source, (inner, inner), method=Image.Resampling.LANCZOS)
+    canvas = Image.new("RGBA", (box, box), (0, 0, 0, 0))
+    canvas.alpha_composite(fitted, ((box - fitted.width) // 2, (box - fitted.height) // 2))
     return canvas
 
 
-def _score(name: str, size: tuple[int, int], target: int | None = None) -> tuple[int, int, int]:
-    lower = name.lower()
-    path_score = 0
-    if "android" in lower or "mipmap" in lower:
-        path_score += 30
-    if "launcher" in lower or "app_icon" in lower:
-        path_score += 20
-    if "windows" in lower or "win32" in lower:
-        path_score += 25
-    if "logo" in lower or "main" in lower or "512" in lower or "1024" in lower:
-        path_score += 15
-    if "preview" in lower or "mockup" in lower or "screenshot" in lower:
-        path_score -= 100
-    area = size[0] * size[1]
-    exact = 1 if target is not None and size == (target, target) else 0
-    return (exact, path_score, area)
-
-
-def load_archive():
-    images = []
-    if not ICON_ARCHIVE.is_file() or ICON_ARCHIVE.stat().st_size == 0:
-        print("Brand icon ZIP is missing or empty; using the repository source logo.")
-        return images
-    with zipfile.ZipFile(ICON_ARCHIVE) as archive:
-        for info in archive.infolist():
-            if info.is_dir() or Path(info.filename).suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp", ".ico"}:
-                continue
-            try:
-                raw = archive.read(info.filename)
-                with Image.open(BytesIO(raw)) as image:
-                    image.load()
-                    images.append((info.filename, raw, image.copy().convert("RGBA"), image.size))
-            except Exception as exc:
-                print(f"Skipping unreadable icon {info.filename}: {exc}")
-    print("Icon ZIP images:")
-    for name, _, _, size in images:
-        print(f"  {name} — {size[0]}x{size[1]}")
-    return images
-
-
-def best_source(images: list[tuple], fallback: Image.Image) -> Image.Image:
-    pngs = [item for item in images if Path(item[0]).suffix.lower() != ".ico"]
-    if not pngs:
-        return fallback.convert("RGBA")
-    square = [item for item in pngs if item[3][0] == item[3][1]]
-    candidates = square or pngs
-    selected = max(
-        candidates,
-        key=lambda item: (item[3][0] * item[3][1], _score(item[0], item[3])[1]),
-    )
-    print(f"Primary app artwork: {selected[0]} ({selected[3][0]}x{selected[3][1]})")
-    return selected[2]
-
-
-def exact_size_source(images: list[tuple], size: int) -> Image.Image | None:
-    pngs = [
-        item for item in images
-        if Path(item[0]).suffix.lower() != ".ico" and item[3] == (size, size)
-    ]
-    if not pngs:
-        return None
-    return max(pngs, key=lambda item: _score(item[0], item[3], size))[2]
-
-
 def main() -> None:
-    source_path = next((path for path in SOURCE_CANDIDATES if path.is_file()), None)
-    if source_path is None:
-        expected = ", ".join(str(path) for path in SOURCE_CANDIDATES)
-        raise FileNotFoundError(f"No brand image found. Checked: {expected}")
+    if not SOURCE.is_file():
+        raise FileNotFoundError(f"Brand source missing: {SOURCE}")
+    with Image.open(SOURCE) as im:
+        im.load()
+        source = im.convert("RGBA")
+    print(f"Brand source: {SOURCE.relative_to(ROOT)} ({source.width}x{source.height})")
 
-    print(f"Using repository brand source: {source_path.relative_to(ROOT)}")
-    # Ignore the legacy Brew icon archive: Cirrus branding must come only from\n    # the current Cirrus source artwork, never from stale bundled icons.\n    images = []
-    with Image.open(source_path) as original:
-        original.load()
-        source = best_source(images, original)
-
-    # Downsample app artwork so oversized source files do not inflate decoded
-    # Flutter image memory. The uploaded archive remains untouched in git.
-    app_art = fit(source, 512, 0.98)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
-    app_art.save(ASSET_DIR / "cirrus_logo.png", format="PNG", optimize=True)
-    app_art.save(ROOT / "cirrus_icon.png", format="PNG", optimize=True)
+    # In-app artwork used by pubspec + cirrus_mark.dart.
+    contain(source, 512, 0.94).convert("RGB").save(
+        ASSET_DIR / "cirrus_icon.jpg", quality=92
+    )
+    # Optimized PNG copy of the same artwork.
+    contain(source, 512, 0.94).save(ASSET_DIR / "cirrus_logo.png", format="PNG", optimize=True)
 
-    android_nodpi = ANDROID_RES / "drawable-nodpi"
-    android_nodpi.mkdir(parents=True, exist_ok=True)
-    app_art.save(android_nodpi / "cirrus_icon.png", format="PNG", optimize=True)
+    nodpi = ANDROID_RES / "drawable-nodpi"
+    nodpi.mkdir(parents=True, exist_ok=True)
+    contain(source, 512, 0.94).save(nodpi / "cirrus_icon.png", format="PNG", optimize=True)
 
-    foreground_dir = ANDROID_RES / "drawable"
-    foreground_dir.mkdir(parents=True, exist_ok=True)
-    fit(source, 432, 0.98).save(
-        foreground_dir / "ic_cirrus_foreground_image.png", format="PNG", optimize=True
+    drawable = ANDROID_RES / "drawable"
+    drawable.mkdir(parents=True, exist_ok=True)
+    # Adaptive-icon foreground (432px canvas, icon ~68% inside safe zone).
+    contain(source, 432, 0.68).save(
+        drawable / "ic_cirrus_foreground_image.png", format="PNG", optimize=True
+    )
+    contain(source, 432, 0.68).save(
+        drawable / "ic_launcher_foreground.png", format="PNG", optimize=True
+    )
+    contain(source, 432, 0.94).save(
+        drawable / "ic_launcher_full_432.png", format="PNG", optimize=True
+    )
+    Image.new("RGBA", (432, 432), BRAND_BG).save(
+        drawable / "ic_launcher_background.png", format="PNG", optimize=True
     )
 
-    for folder, size in ANDROID_SIZES.items():
-        target_dir = ANDROID_RES / folder
-        target_dir.mkdir(parents=True, exist_ok=True)
-        exact = exact_size_source(images, size)
-        icon = exact if exact is not None else fit(source, size, 0.98)
-        icon.save(target_dir / "ic_launcher.png", format="PNG", optimize=True)
-        print(f"Android icon {folder}: {size}x{size} ({'from ZIP' if exact is not None else 'resized from source'})")
+    for folder, size in LAUNCHER_SIZES.items():
+        target = ANDROID_RES / folder
+        target.mkdir(parents=True, exist_ok=True)
+        contain(source, size, 0.70).save(target / "ic_launcher.png", format="PNG", optimize=True)
+        print(f"Android icon {folder}: {size}x{size}")
 
     WINDOWS_ICON.parent.mkdir(parents=True, exist_ok=True)
-    windows_icos = [item for item in images if Path(item[0]).suffix.lower() == ".ico"]
-    if windows_icos:
-        selected_ico = max(
-            windows_icos,
-            key=lambda item: (
-                1 if "windows" in item[0].lower() or "win" in item[0].lower() else 0,
-                item[3][0] * item[3][1],
-            ),
-        )
-        WINDOWS_ICON.write_bytes(selected_ico[1])
-        print(f"Windows EXE icon: {selected_ico[0]} (copied unchanged)")
-    else:
-        fit(source, 256, 0.98).convert("RGB").save(
-            WINDOWS_ICON,
-            format="ICO",
-            sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
-        )
-        print("Windows EXE icon: generated multi-size ICO from supplied artwork")
+    contain(source, 256, 0.78).convert("RGB").save(
+        WINDOWS_ICON,
+        format="ICO",
+        sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)],
+    )
+    print("Windows EXE icon: multi-size ICO generated")
 
-    print("Generated optimized Cirrus assets; VPN/core files were not modified.")
+    print("Done — Cirrus brand assets regenerated from assets/images/cirrus_icon.png")
 
 
 if __name__ == "__main__":

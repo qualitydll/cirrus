@@ -77,6 +77,9 @@ Future<VpsDeployResult> deployAegis(
       username: creds.username,
       onPasswordRequest: () => creds.password,
       identities: identities.isEmpty ? null : identities,
+      // First-connect UX: accept the host key like `ssh` does on first use.
+      // TODO: replace with TOFU fingerprint storage for production hardening.
+      disableHostkeyVerification: true,
     );
 
     both('→ uploading installer …');

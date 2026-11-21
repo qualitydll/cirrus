@@ -183,7 +183,7 @@ class CirrusApp extends StatelessWidget {
           builder: (lightDynamic, darkDynamic) {
             final s = state.settings;
             final seed = s.systemColor
-                ? lightDynamic?.primary ?? kCirrusGreen
+                ? lightDynamic?.primary ?? kCirrusBlue
                 : s.seedColor;
             ColorScheme scheme(Brightness b) =>
                 cirrusScheme(seed, b, s.schemeVariant);
@@ -245,7 +245,7 @@ class _AndroidBootstrapState extends State<_AndroidBootstrap> {
       theme: ThemeData(
         brightness: Brightness.dark,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: kCirrusGreen,
+          seedColor: kCirrusBlue,
           brightness: Brightness.dark,
         ),
       ),

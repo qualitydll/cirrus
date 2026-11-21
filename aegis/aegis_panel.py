@@ -215,15 +215,13 @@ def inbound_for(node):
     if p == "cfws":
         inbound["transport"] = {
             "type": "ws",
-            "ws_settings": {
-                "path": node["path"],
-                "headers": {"Host": node.get("sni") or node["host"]},
-            },
+            "path": node["path"],
+            "headers": {"Host": node.get("sni") or node["host"]},
         }
     else:
         inbound["transport"] = {
             "type": "grpc",
-            "grpc_settings": {"service_name": node["service_name"]},
+            "service_name": node["service_name"],
         }
     return inbound
 
@@ -246,6 +244,8 @@ def apply_singbox(st):
         chk = run([SINGBOX_BIN, "check", "-c", str(conf_path)], timeout=30)
         if chk.returncode != 0:
             return False, (chk.stderr or chk.stdout).strip()[:800]
+        if not Path("/run/systemd/system").exists():
+            return True, "ok (no systemd — restart sing-box manually)"
         r = run(["systemctl", "restart", "sing-box"], timeout=30)
         if r.returncode != 0:
             return False, f"systemctl restart failed: {r.stderr.strip()[:300]}"

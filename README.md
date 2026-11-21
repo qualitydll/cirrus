@@ -8,7 +8,7 @@
 
 [Скачать сборки](https://github.com/qualitydll/brew/actions) · [Сообщить об ошибке](https://github.com/qualitydll/brew/issues) · [История изменений](https://github.com/qualitydll/brew/commits/main)
 
-![Платформы](https://img.shields.io/badge/platforms-Windows%20%7C%20Android-2E7D4F?style=flat-square)
+![Платформы](https://img.shields.io/badge/platforms-Windows%20%7C%20Android-1F4E79?style=flat-square)
 ![Flutter](https://img.shields.io/badge/UI-Flutter-02569B?style=flat-square&logo=flutter&logoColor=white)
 ![Core](https://img.shields.io/badge/core-Mihomo-1E1410?style=flat-square)
 
