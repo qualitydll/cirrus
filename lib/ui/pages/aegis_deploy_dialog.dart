@@ -228,7 +228,8 @@ class _DeployDialogState extends State<_DeployDialog> {
           SegmentedButton<String>(
             segments: const [
               ButtonSegment(value: 'tcp', label: Text('TCP')),
-              ButtonSegment(value: 'udp', label: Text('UDP + FEC')),
+              ButtonSegment(value: 'udp', label: Text('UDP')),
+              ButtonSegment(value: 'ws', label: Text('WS')),
             ],
             selected: {_transport},
             onSelectionChanged: _busy

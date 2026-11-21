@@ -589,44 +589,50 @@ class _AddDialogState extends State<_AddDialog> {
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Типы Aegis'),
+        title: const Text('Типы подключения'),
         content: const SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _HelpItem(
-                title: 'Turbo · UDP · FEC',
-                body: 'Максимальная скорость: трафик идёт по UDP с защитой '
-                    'от потерь пакетов — как в онлайн-играх и стриминге. '
-                    'Но UDP не проходит через CDN Cloudflare — работает '
-                    'только напрямую на сервер. Для ПК, ТВ и ноутбуков.',
+                title: 'AEGIS · TCP',
+                body: 'Надёжный TCP-транспорт с шифрованием ChaCha20-Poly1305. '
+                    'Хороший баланс скорости и стабильности. Работает напрямую '
+                    'на сервер, без CDN. Подходит для большинства задач.',
               ),
               _HelpItem(
-                title: 'Eco · TCP · TLS · Reality',
-                body: 'Лёгкий режим для телефона: маскируется под обычный '
-                    'сайт через REALITY — для цензора выглядит как '
-                    'подключение к реальному сайту. Тоже только напрямую, '
-                    'без CDN. Для слабых устройств и мобильного интернета.',
+                title: 'AEGIS · UDP',
+                body: 'Быстрый UDP-транспорт для максимальной скорости. '
+                    'Идеален для стриминга, игр и больших файлов. '
+                    'Работает напрямую на сервер, без CDN.',
               ),
               _HelpItem(
-                title: 'WS · CF',
-                body: 'Идёт через сеть Cloudflare как обычный сайт по '
-                    'WebSocket. Медленнее Turbo, но пробивается там, где '
-                    'прямые протоколы заблокированы. Нужен домен за '
-                    'Cloudflare (оранжевое облако).',
+                title: 'FEC (Forward Error Correction)',
+                body: 'Защита от потери пакетов в UDP. Добавляет лишние '
+                    '«паритетные» пакеты — если один потерялся, данные '
+                    'восстанавливаются без повторной отправки. Увеличивает '
+                    'трафик на ~20%, но повышает стабильность на плохих '
+                    'сетях. Рекомендуется для мобильного интернета.',
               ),
               _HelpItem(
-                title: 'gRPC · CF',
-                body: 'То же через Cloudflare, но по gRPC — чуть стабильнее '
-                    'на нестабильных сетях. Тоже требует домен за '
-                    'Cloudflare.',
+                title: 'AEGIS · WebSocket (WS)',
+                body: 'Транспорт через WebSocket — работает через Cloudflare '
+                    'CDN и другие прокси. Медленнее TCP/UDP, но пробивается '
+                    'там, где прямые протоколы заблокированы. Требует домен '
+                    'за Cloudflare (оранжевое облако).',
+              ),
+              _HelpItem(
+                title: 'AEGIS · gRPC',
+                body: 'Транспорт через gRPC — альтернатива WebSocket для '
+                    'Cloudflare. Чуть стабильнее на нестабильных сетях. '
+                    'Также требует домен за Cloudflare.',
               ),
               SizedBox(height: 8),
               Text(
-                ' Галочка «Через CDN» оставляет доступными только '
-                'WS·CF и gRPC·CF — Cloudflare не пропускает UDP и '
-                'Reality-трафик.',
+                '💡 Совет: для большинства пользователей TCP — оптимальный '
+                'выбор. UDP + FEC — для максимальной скорости. WebSocket/gRPC '
+                '— только если TCP/UDP заблокированы провайдером.',
                 style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
               ),
             ],
@@ -1024,7 +1030,8 @@ class _AegisNativeDialogState extends State<_AegisNativeDialog> {
               SegmentedButton<String>(
                 segments: const [
                   ButtonSegment(value: 'tcp', label: Text('TCP')),
-                  ButtonSegment(value: 'udp', label: Text('UDP + FEC')),
+                  ButtonSegment(value: 'udp', label: Text('UDP')),
+                  ButtonSegment(value: 'ws', label: Text('WS')),
                 ],
                 selected: {_transport},
                 onSelectionChanged: _busy

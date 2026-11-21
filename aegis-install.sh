@@ -9,6 +9,7 @@ AEGIS_PORT=8443
 AEGIS_SECRET=""
 AEGIS_TRANSPORT="tcp"
 AEGIS_FEC="false"
+AEGIS_PORT=8443
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -35,9 +36,10 @@ done
 echo "=== AEGIS Server Installer ==="
 echo "Transport: $AEGIS_TRANSPORT"
 echo "FEC: $AEGIS_FEC"
+echo "Port: $AEGIS_PORT"
 echo "Installing AEGIS daemon..."
 
-# Detect OS
+# Detect OS and architecture
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     OS=$ID
@@ -45,15 +47,17 @@ else
     OS="unknown"
 fi
 
-# Download appropriate binary
-case "$(uname -m)" in
+# Detect architecture
+ARCH=$(uname -m)
+case "$ARCH" in
     x86_64) ARCH="amd64" ;;
     aarch64|arm64) ARCH="arm64" ;;
-    *) echo "Unsupported architecture: $(uname -m)"; exit 1 ;;
+    *) echo "Unsupported architecture: $ARCH"; exit 1 ;;
 esac
 
+# Determine binary name
 case "$OS" in
-    ubuntu|debian|centos|fedora|rhel)
+    ubuntu|debian|centos|fedora|rhel|alpine)
         BINARY_NAME="aegis-linux-$ARCH"
         ;;
     *)
@@ -62,15 +66,17 @@ case "$OS" in
         ;;
 esac
 
-echo "Downloading $BINARY_NAME..."
+echo "Downloading $BINARY_NAME for $OS/$ARCH..."
 mkdir -p "$AEGIS_DIR"
 
-# Try GitHub releases first, fallback to direct download
-DOWNLOAD_URL="https://github.com/qualitydll/aegis/releases/download/aegis-v1/$BINARY_NAME"
+# Try GitHub releases first
+DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v5/$BINARY_NAME"
 if ! curl -fsSL "$DOWNLOAD_URL" -o "$AEGIS_BIN"; then
-    echo "GitHub release not found, trying alternative..."
-    # For now, user must manually place binary
-    echo "Please place aegis binary at $AEGIS_BIN manually"
+    echo "GitHub release not found, trying artifacts..."
+    # Fallback: try to get from latest workflow artifacts
+    # For now, we'll provide manual instructions
+    echo "Please download $BINARY_NAME manually and place it at $AEGIS_BIN"
+    echo "Or run this script with the binary already in place."
     exit 1
 fi
 

@@ -113,7 +113,7 @@ Future<VpsDeployResult> deployAegis(
     if (transport != 'tcp') {
       installCmd.write(' --transport $transport');
     }
-    if (fec) {
+    if (fec && transport == 'udp') {
       installCmd.write(' --fec');
     }
     installCmd.write(' 2>&1');
