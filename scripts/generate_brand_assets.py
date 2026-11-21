@@ -7,7 +7,7 @@ from PIL import Image, ImageOps
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_DIR = ROOT / "assets" / "images"
 # The tracked source logo placed by the project owner.
-SOURCE = ASSET_DIR / "cirrus_icon.png"
+SOURCE = ROOT / "cirrus_icon_source.png"
 ANDROID_RES = ROOT / "android" / "app" / "src" / "main" / "res"
 WINDOWS_ICON = ROOT / "windows" / "runner" / "resources" / "app_icon.ico"
 LAUNCHER_SIZES = {
