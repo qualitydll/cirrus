@@ -86,7 +86,7 @@ else
     
     if [ -z "$LATEST_RUN" ]; then
         echo "No successful AEGIS build found, trying GitHub releases..."
-        DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v5/$BINARY_NAME"
+        DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.0/$BINARY_NAME"
         if ! curl -fsSL "$DOWNLOAD_URL" -o "$AEGIS_BIN"; then
             echo "Failed to download from GitHub releases"
             echo "Please download $BINARY_NAME manually and place it at $AEGIS_BIN"
