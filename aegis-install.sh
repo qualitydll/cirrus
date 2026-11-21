@@ -69,85 +69,16 @@ esac
 echo "Downloading $BINARY_NAME for $OS/$ARCH..."
 mkdir -p "$AEGIS_DIR"
 
-# Check if binary was uploaded by the app
-if [ -f "/tmp/aegis_deploy/aegis" ]; then
-    echo "Using uploaded binary..."
-    cp /tmp/aegis_deploy/aegis "$AEGIS_BIN"
-    chmod +x "$AEGIS_BIN"
-    echo "Binary installed from upload"
-else
-    # Download from latest successful AEGIS build workflow
-    echo "Finding latest successful AEGIS build..."
-    
-    # Get the latest successful run
-    LATEST_RUN=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/workflows/aegis-build.yml/runs?per_page=1&branch=main&status=success" \
-        -H "Accept: application/vnd.github.v3+json" \
-        | python3 -c "import sys, json; data=json.load(sys.stdin); print(data['workflow_runs'][0]['id']) if data.get('workflow_runs') else ''")
-    
-    if [ -z "$LATEST_RUN" ]; then
-        echo "No successful AEGIS build found, trying GitHub releases..."
-        DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.0/$BINARY_NAME"
-        if ! curl -fsSL "$DOWNLOAD_URL" -o "$AEGIS_BIN"; then
-            echo "Failed to download from GitHub releases"
-            echo "Please download $BINARY_NAME manually and place it at $AEGIS_BIN"
-            exit 1
-        fi
-    else
-        echo "Found successful build run: $LATEST_RUN"
-        
-        # Get artifacts for this run
-        ARTIFACTS=$(curl -s "https://api.github.com/repos/qualitydll/cirrus/actions/runs/$LATEST_RUN/artifacts" \
-            -H "Accept: application/vnd.github.v3+json")
-        
-        # Find the matching artifact ID
-        ARTIFACT_ID=$(echo "$ARTIFACTS" | python3 -c "
-import sys, json
-data = json.load(sys.stdin)
-target = '$BINARY_NAME'
-for artifact in data.get('artifacts', []):
-    if target in artifact.get('name', ''):
-        print(artifact['id'])
-        break
-")
-        
-        if [ -z "$ARTIFACT_ID" ]; then
-            echo "Could not find matching artifact for $BINARY_NAME"
-            echo "Available artifacts:"
-            echo "$ARTIFACTS" | python3 -c "import sys, json; data=json.load(sys.stdin); [print(f\"  {a['name']}\") for a in data.get('artifacts', [])]"
-            exit 1
-        fi
-        
-        echo "Downloading artifact $ARTIFACT_ID..."
-        DOWNLOAD_URL="https://github.com/qualitydll/cirrus/actions/artifacts/$ARTIFACT_ID/zip"
-        if ! curl -fsSL "$DOWNLOAD_URL" -o "/tmp/aegis-artifact.zip"; then
-            echo "Failed to download artifact"
-            exit 1
-        fi
-        
-        # Extract the binary from the zip
-        cd /tmp
-        python3 -c "
-import zipfile
-import sys
-try:
-    with zipfile.ZipFile('aegis-artifact.zip', 'r') as z:
-        for name in z.namelist():
-            if name.endswith('$BINARY_NAME'):
-                z.extract(name, '.')
-                print(f'Extracted: {name}')
-                sys.exit(0)
-    print('Binary not found in artifact')
-    sys.exit(1)
-"
-        
-        if [ -f "$BINARY_NAME" ]; then
-            mv "$BINARY_NAME" "$AEGIS_BIN"
-            rm -f /tmp/aegis-artifact.zip
-        else
-            echo "Failed to extract binary from artifact"
-            exit 1
-        fi
-    fi
+# Download directly from GitHub release (most reliable)
+DOWNLOAD_URL="https://github.com/qualitydll/cirrus/releases/download/aegis-v1.0.0/$BINARY_NAME"
+echo "Downloading from: $DOWNLOAD_URL"
+
+if ! curl -fsSL "$DOWNLOAD_URL" -o "$AEGIS_BIN"; then
+    echo "Failed to download $BINARY_NAME from GitHub release"
+    echo "Please download manually from:"
+    echo "  https://github.com/qualitydll/cirrus/releases/tag/aegis-v1.0.0"
+    echo "And place it at: $AEGIS_BIN"
+    exit 1
 fi
 
 chmod +x "$AEGIS_BIN"
