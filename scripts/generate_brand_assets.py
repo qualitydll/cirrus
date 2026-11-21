@@ -46,6 +46,8 @@ def main() -> None:
     )
     # Optimized PNG copy of the same artwork.
     contain(source, 512, 0.94).save(ASSET_DIR / "cirrus_logo.png", format="PNG", optimize=True)
+    # Root icon for CI/external references.
+    contain(source, 512, 0.94).save(ROOT / "cirrus_icon.png", format="PNG", optimize=True)
 
     nodpi = ANDROID_RES / "drawable-nodpi"
     nodpi.mkdir(parents=True, exist_ok=True)
@@ -81,7 +83,7 @@ def main() -> None:
     )
     print("Windows EXE icon: multi-size ICO generated")
 
-    print("Done — Cirrus brand assets regenerated from assets/images/cirrus_icon.png")
+    print("Done — Cirrus brand assets regenerated from cirrus_icon_source.png")
 
 
 if __name__ == "__main__":
