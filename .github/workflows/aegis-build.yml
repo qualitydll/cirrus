@@ -84,6 +84,12 @@ jobs:
         with:
           path: artifacts
       
+      - name: List artifacts
+        run: |
+          echo "=== Artifacts directory ==="
+          ls -la artifacts/
+          find artifacts/ -type f -name "aegis*" | head -20
+      
       - name: Create release
         uses: softprops/action-gh-release@v1
         with:
@@ -111,7 +117,8 @@ jobs:
             # Client (UDP + FEC)
             ./aegis client -server VPS_IP:8443 -secret your_secret -listen 127.0.0.1:1080 -transport udp -fec
             ```
-          files: artifacts/**/${{ matrix.output }}
+          files: |
+            artifacts/**/aegis-*
           draft: false
           prerelease: false
         env:
