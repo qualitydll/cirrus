@@ -5,6 +5,7 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.net.VpnService
 import android.os.Build
@@ -59,6 +60,9 @@ class MihomoVpnService : VpnService() {
                 startForegroundCompat()
                 val configPath = intent.getStringExtra(EXTRA_CONFIG_PATH)
                 val sessionId = intent.getStringExtra(EXTRA_SESSION_ID)
+                val disallowedApps =
+                    intent.getStringArrayListExtra(EXTRA_DISALLOWED_APPS)
+                        ?: arrayListOf()
                 if (sessionId.isNullOrBlank()) {
                     receiver?.send(
                         Activity.RESULT_CANCELED,
@@ -74,7 +78,10 @@ class MihomoVpnService : VpnService() {
                             activeSessionId = null
                         }
                         activeSessionId = sessionId
-                        startMihomo(configPath ?: error("Mihomo config path is missing."))
+                        startMihomo(
+                            configPath ?: error("Mihomo config path is missing."),
+                            disallowedApps,
+                        )
                         receiver?.send(Activity.RESULT_OK, Bundle())
                     } catch (error: Throwable) {
                         val message = try {
@@ -137,7 +144,7 @@ class MihomoVpnService : VpnService() {
         }
     }
 
-    private fun startMihomo(configPath: String) {
+    private fun startMihomo(configPath: String, disallowedApps: List<String>) {
         MihomoRuntime.load(this)
 
         val configFile = File(configPath).canonicalFile
@@ -179,6 +186,13 @@ class MihomoVpnService : VpnService() {
             .setMtu(TUN_MTU)
             .setBlocking(false)
             .apply {
+                for (packageName in disallowedApps) {
+                    try {
+                        addDisallowedApplication(packageName)
+                    } catch (_: PackageManager.NameNotFoundException) {
+                        // Package was uninstalled between selection and connect.
+                    }
+                }
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     setMetered(false)
                 }
@@ -301,6 +315,7 @@ class MihomoVpnService : VpnService() {
         const val EXTRA_SESSION_ID = "sessionId"
         const val EXTRA_RESULT = "resultReceiver"
         const val EXTRA_ERROR = "error"
+        const val EXTRA_DISALLOWED_APPS = "disallowedApps"
 
         private const val NOTIFICATION_CHANNEL = "cirrus_vpn"
         private const val NOTIFICATION_ID = 1

@@ -2,6 +2,7 @@ package dev.cirrus.app
 
 import android.app.Activity
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.VpnService
 import android.os.Build
 import android.os.Bundle
@@ -33,9 +34,11 @@ class MainActivity : FlutterActivity() {
                     "startVpn" -> startVpn(
                         call.argument("configPath"),
                         call.argument("sessionId"),
+                        call.argument("disallowedApps"),
                         result,
                     )
                     "stopVpn" -> stopVpn(call.argument("sessionId"), result)
+                    "listApps" -> result.success(listApps())
                     else -> result.notImplemented()
                 }
             }
@@ -141,6 +144,7 @@ class MainActivity : FlutterActivity() {
     private fun startVpn(
         configPath: String?,
         sessionId: String?,
+        disallowedAppsArg: Any?,
         result: MethodChannel.Result,
     ) {
         if (configPath.isNullOrBlank()) {
@@ -155,10 +159,18 @@ class MainActivity : FlutterActivity() {
             result.error("vpn_permission_required", "VPN permission has not been granted.", null)
             return
         }
+        val disallowedApps =
+            (disallowedAppsArg as? List<*>)
+                ?.filterIsInstance<String>()
+                ?: emptyList()
         val intent = Intent(this, MihomoVpnService::class.java)
             .setAction(MihomoVpnService.ACTION_START)
             .putExtra(MihomoVpnService.EXTRA_CONFIG_PATH, configPath)
             .putExtra(MihomoVpnService.EXTRA_SESSION_ID, sessionId)
+            .putStringArrayListExtra(
+                MihomoVpnService.EXTRA_DISALLOWED_APPS,
+                arrayListOf<String>().apply { addAll(disallowedApps) },
+            )
             .putExtra(MihomoVpnService.EXTRA_RESULT, resultReceiver(result))
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -185,6 +197,33 @@ class MainActivity : FlutterActivity() {
         } catch (error: Exception) {
             result.error("vpn_stop_failed", error.message, null)
         }
+    }
+
+    private fun listApps(): List<Map<String, String>> {
+        val pm = packageManager
+        val intent = Intent(Intent.ACTION_MAIN)
+            .addCategory(Intent.CATEGORY_LAUNCHER)
+        val resolved = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            pm.queryIntentActivities(
+                intent,
+                PackageManager.ResolveInfoFlags.of(PackageManager.MATCH_ALL.toLong()),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            pm.queryIntentActivities(intent, 0)
+        }
+        return resolved
+            .mapNotNull { info ->
+                val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
+                val label = try {
+                    info.loadLabel(pm).toString()
+                } catch (_: Exception) {
+                    pkg
+                }
+                mapOf("package" to pkg, "label" to label.ifBlank { pkg })
+            }
+            .distinctBy { it["package"] }
+            .sortedBy { it["label"]?.lowercase() ?: "" }
     }
 
     private fun resultReceiver(result: MethodChannel.Result) =

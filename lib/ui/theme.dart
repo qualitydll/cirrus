@@ -64,6 +64,12 @@ ThemeData buildTheme(ColorScheme scheme) {
         fontSize: 12,
       ),
     ),
+    navigationBarTheme: NavigationBarThemeData(
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      indicatorColor: scheme.secondaryContainer,
+    ),
     snackBarTheme: SnackBarThemeData(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
@@ -90,6 +96,9 @@ ThemeData buildTheme(ColorScheme scheme) {
 
 const seedPalette = <Color>[
   kCirrusBlue,
+  kCirrusSky,
+  kCirrusCyan,
+  kCirrusViolet,
   kOrange,
   kCoffee,
   kCaramel,

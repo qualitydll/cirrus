@@ -197,6 +197,35 @@ rules:
   });
 
 
+  test('bypass rules precede provider rules and enable process lookup', () {
+    final config = applyCoreOptions(
+      const {
+        'rules': [
+          'DOMAIN-SUFFIX,provider.example,DIRECT',
+          'MATCH,PROXY',
+        ],
+      },
+      const CoreOptions(
+        mixedPort: 7890,
+        apiPort: 9097,
+        secret: 'test-secret',
+        mode: 'rule',
+        tun: false,
+        allowLan: false,
+        bypassApps: ['com.example.app'],
+        bypassProcesses: ['chrome.exe'],
+      ),
+    );
+
+    expect(config['find-process-mode'], 'always');
+    expect(config['rules'], [
+      'PROCESS-NAME,com.example.app,DIRECT',
+      'PROCESS-NAME,chrome.exe,DIRECT',
+      'DOMAIN-SUFFIX,provider.example,DIRECT',
+      'MATCH,PROXY',
+    ]);
+  });
+
   test('WLS is disabled by default and preserves original SNI', () {
     const original = <String, dynamic>{
       'proxies': [

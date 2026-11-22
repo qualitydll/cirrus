@@ -78,4 +78,26 @@ void main() {
     expect(calls.map((call) => call.method).toList(), ['startVpn', 'stopVpn']);
     expect((calls[1].arguments as Map)['sessionId'], 'failed-session');
   });
+
+  test('start forwards disallowed apps to the VPN service', () async {
+    final calls = <MethodCall>[];
+    messenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    final vpn = AndroidVpn(channel: channel);
+
+    await vpn.start(
+      'profile/config.yaml',
+      sessionId: 'bypass-session',
+      disallowedApps: const ['com.example.app', 'com.example.other'],
+    );
+
+    expect(calls, hasLength(1));
+    expect(calls.single.method, 'startVpn');
+    expect((calls.single.arguments as Map)['disallowedApps'], [
+      'com.example.app',
+      'com.example.other',
+    ]);
+  });
 }

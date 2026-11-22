@@ -23,6 +23,17 @@ class ProfilesPage extends StatelessWidget {
           title: 'Подписки',
           subtitle: 'Ссылки на подписку, Clash YAML или ключи aegis / vless / vmess / trojan / ss / hy2 / tuic',
           actions: [
+            if (state.profiles.any((p) => p.isRemote))
+              FilledButton.tonalIcon(
+                onPressed: state.busyProfile
+                    ? null
+                    : () async {
+                        final message = await state.updateAllProfiles();
+                        if (context.mounted) showSnack(context, message);
+                      },
+                icon: const Icon(Icons.sync_rounded),
+                label: const Text('Обновить все'),
+              ),
             FilledButton.icon(
               onPressed: () => showAddProfileDialog(context),
               icon: const Icon(Icons.add_rounded),

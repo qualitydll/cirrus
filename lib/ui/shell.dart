@@ -8,10 +8,12 @@ import '../state/app_state.dart';
 import '../state/models.dart';
 import 'pages/bypass_page.dart';
 import 'pages/home_page.dart';
+import 'pages/logs_page.dart';
 import 'pages/profiles_page.dart';
 import 'pages/servers_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/aurora_background.dart';
+import 'widgets/cirrus_mark.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -35,6 +37,7 @@ const _dests = [
   _Dest('Прокси', Icons.hub_outlined, Icons.hub_rounded),
   _Dest('Профили', Icons.layers_outlined, Icons.layers_rounded),
   _Dest('Обход', Icons.alt_route_outlined, Icons.alt_route_rounded),
+  _Dest('Журнал', Icons.receipt_long_outlined, Icons.receipt_long_rounded),
   _Dest('Настр.', Icons.tune_outlined, Icons.tune_rounded),
 ];
 
@@ -55,6 +58,7 @@ class _ShellState extends State<Shell> {
     1 => const ServersPage(),
     2 => const ProfilesPage(),
     3 => const BypassPage(),
+    4 => const LogsPage(),
     _ => const SettingsPage(),
   };
 
@@ -101,7 +105,7 @@ class _ShellState extends State<Shell> {
           Column(
             children: [
               if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
-                const _TitleBar(),
+                _TitleBar(status: state.status),
               Expanded(
                 child: Row(
                   children: [
@@ -171,7 +175,9 @@ class _Logo extends StatelessWidget {
 }
 
 class _TitleBar extends StatelessWidget {
-  const _TitleBar();
+  const _TitleBar({required this.status});
+
+  final ConnStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +190,10 @@ class _TitleBar extends StatelessWidget {
               child: Container(
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.only(left: 20),
-                child: const SizedBox.shrink(),
+                child: CirrusMark(
+                  size: 18,
+                  lit: status == ConnStatus.connected,
+                ),
               ),
             ),
           ),

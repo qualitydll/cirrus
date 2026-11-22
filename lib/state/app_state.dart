@@ -21,6 +21,7 @@ import '../core/routing_rules.dart';
 import '../core/system_proxy.dart';
 import 'models.dart';
 import 'settings.dart';
+import 'theme_presets.dart';
 
 /// Rolling traffic history (bytes/sec), one sample per second.
 class TrafficStore extends ChangeNotifier {
@@ -142,6 +143,14 @@ class AppState extends ChangeNotifier {
     ];
   }
 
+  List<String> get favoriteServerNames {
+    final prefix = '${activeProfile?.id ?? 'default'}::';
+    return [
+      for (final key in settings.favoriteServers)
+        if (key.startsWith(prefix)) key.substring(prefix.length),
+    ];
+  }
+
   void recordRecentServer(String name) {
     final key = _serverKey(name);
     final recent = settings.recentServers
@@ -161,11 +170,13 @@ class AppState extends ChangeNotifier {
   void setAndroidBypassApps(List<String> apps) {
     settings.androidBypassApps = List<String>.of(apps);
     notifyListeners();
+    if (isConnected) unawaited(reconnect());
   }
 
   void setWindowsBypassProcesses(List<String> processes) {
     settings.windowsBypassProcesses = List<String>.of(processes);
     notifyListeners();
+    if (isConnected) unawaited(reconnect());
   }
 
   Future<void> addDomainRule(String rule) async {
@@ -412,6 +423,25 @@ class AppState extends ChangeNotifier {
     }
   }
 
+  /// Refreshes every remote subscription and returns a short UI summary.
+  Future<String> updateAllProfiles() async {
+    var ok = 0;
+    var failed = 0;
+    for (final pr in List<Profile>.of(profiles)) {
+      if (pr.url == null || pr.isAegisNative) continue;
+      try {
+        await updateProfile(pr);
+        ok++;
+      } catch (_) {
+        failed++;
+      }
+    }
+    if (ok == 0 && failed == 0) return 'Нет удалённых подписок';
+    return failed == 0
+        ? 'Обновлено подписок: $ok'
+        : 'Обновлено: $ok · ошибок: $failed';
+  }
+
   Future<void> renameProfile(Profile pr, String name) async {
     pr.name = name;
     await _saveProfiles();
@@ -598,6 +628,7 @@ class AppState extends ChangeNotifier {
         await androidVpn.start(
           configFile.path,
           sessionId: androidSessionId,
+          disallowedApps: settings.androidBypassApps,
         );
         androidServiceStarted = true;
         await _waitForApi(api);
@@ -1054,16 +1085,33 @@ class AppState extends ChangeNotifier {
   void setSeed(Color c) {
     settings.seedColor = c;
     settings.systemColor = false;
+    settings.themePreset = customThemePresetId;
     notifyListeners();
   }
 
   void setSystemColor(bool v) {
     settings.systemColor = v;
+    if (v) settings.themePreset = customThemePresetId;
     notifyListeners();
   }
 
   void setVariant(DynamicSchemeVariant v) {
     settings.schemeVariant = v;
+    settings.themePreset = customThemePresetId;
+    notifyListeners();
+  }
+
+  void applyThemePreset(String id) {
+    final preset = cirrusThemePresetById(id);
+    settings.seedColor = preset.seed;
+    settings.systemColor = false;
+    settings.schemeVariant = preset.variant;
+    settings.themePreset = preset.id;
+    notifyListeners();
+  }
+
+  void markCustomTheme() {
+    settings.themePreset = customThemePresetId;
     notifyListeners();
   }
 

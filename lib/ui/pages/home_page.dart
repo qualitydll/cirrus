@@ -19,6 +19,7 @@ class HomePage extends StatelessWidget {
     final hero = _Hero(state: state);
     final cards = [
       _ServerCard(state: state),
+      if (state.isConnected) _QuickServersCard(state: state),
       _SpeedCard(state: state),
       if (state.isConnected) _ConnectionsCard(state: state),
       _ProfileCard(state: state),
@@ -144,6 +145,10 @@ class _Hero extends StatelessWidget {
           onSelectionChanged: (s) => state.setMode(s.first),
           showSelectedIcon: false,
         ),
+        if (state.isConnected) ...[
+          const SizedBox(height: 16),
+          _StatusStrip(state: state),
+        ],
         AnimatedSize(
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOutCubic,
@@ -710,6 +715,219 @@ class _ProfileCard extends StatelessWidget {
       return 'Использовано не менее 90% доступного трафика';
     }
     return null;
+  }
+}
+
+String _modeLabel(String mode) => switch (mode) {
+  'global' => 'Весь трафик',
+  'direct' => 'Напрямую',
+  _ => 'Умный',
+};
+
+class _StatusStrip extends StatelessWidget {
+  const _StatusStrip({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final server = state.currentServer;
+    final delay = server == null ? null : state.delays[server];
+    final delayText = delay == null || delay <= 0 ? '—' : '$delay мс';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerLow.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: scheme.outlineVariant.withValues(alpha: 0.45),
+        ),
+      ),
+      child: Wrap(
+        spacing: 18,
+        runSpacing: 10,
+        children: [
+          _StatusItem(
+            icon: Icons.alt_route_rounded,
+            label: 'Режим',
+            value: _modeLabel(state.settings.mode),
+          ),
+          _StatusItem(
+            icon: Icons.dns_rounded,
+            label: 'Сервер',
+            value: server ?? 'Не выбран',
+            maxWidth: 190,
+          ),
+          _StatusItem(
+            icon: Icons.speed_rounded,
+            label: 'Пинг',
+            value: delayText,
+            maxWidth: 90,
+          ),
+          _StatusItem(
+            icon: Icons.hub_rounded,
+            label: 'Соединения',
+            value: '${state.activeConnections.length}',
+            maxWidth: 90,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StatusItem extends StatelessWidget {
+  const _StatusItem({
+    required this.icon,
+    required this.label,
+    required this.value,
+    this.maxWidth = 140,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: scheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: t.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: maxWidth),
+          child: Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: t.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickServersCard extends StatelessWidget {
+  const _QuickServersCard({required this.state});
+
+  final AppState state;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context).textTheme;
+    final seen = <String>{};
+    final names = <String>[
+      ...state.favoriteServerNames,
+      ...state.recentServerNames,
+    ].where(seen.add).toList();
+    final nodes = [
+      for (final name in names)
+        if (name != 'DIRECT' &&
+            name != 'REJECT' &&
+            (state.nodes[name]?.isGroup ?? true) == false)
+          name,
+    ].take(5).toList();
+    final group = state.mainGroup;
+    final canSelect = group?.isSelectable ?? false;
+
+    return GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _CardTitle(
+            Icons.star_rounded,
+            'Быстрые серверы',
+            trailing: IconButton(
+              tooltip: 'Все серверы',
+              onPressed: () => Shell.go(context, 1),
+              icon: const Icon(Icons.chevron_right_rounded),
+            ),
+          ),
+          const SizedBox(height: 6),
+          if (nodes.isEmpty)
+            Text(
+              'Избранное и недавние серверы появятся здесь',
+              style: t.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            )
+          else
+            for (var i = 0; i < nodes.length; i++)
+              Builder(
+                builder: (context) {
+                  final name = nodes[i];
+                  final selected = state.currentServer == name;
+                  final favorite = state.isFavoriteServer(name);
+                  return ListTile(
+                    dense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    tileColor: selected
+                        ? scheme.primaryContainer.withValues(alpha: 0.5)
+                        : Colors.transparent,
+                    leading: Icon(
+                      selected
+                          ? Icons.check_circle_rounded
+                          : favorite
+                          ? Icons.star_rounded
+                          : Icons.public_rounded,
+                      color: selected
+                          ? scheme.primary
+                          : favorite
+                          ? scheme.tertiary
+                          : scheme.onSurfaceVariant,
+                      size: 20,
+                    ),
+                    title: Text(
+                      name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: t.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    trailing: PingChip(
+                      delay: state.delays[name],
+                      testing: state.testing.contains(name),
+                    ),
+                    onTap: canSelect
+                        ? () async {
+                            try {
+                              await state.select(group!.name, name);
+                              if (context.mounted) {
+                                showSnack(context, 'Сервер: $name');
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                showSnack(context, 'Не удалось: $e');
+                              }
+                            }
+                          }
+                        : null,
+                  );
+                },
+              ),
+        ],
+      ),
+    );
   }
 }
 

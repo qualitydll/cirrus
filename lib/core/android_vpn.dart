@@ -25,12 +25,17 @@ class AndroidVpn {
     description: 'Mihomo config validation',
   );
 
-  Future<void> start(String configPath, {required String sessionId}) async {
+  Future<void> start(
+    String configPath, {
+    required String sessionId,
+    List<String> disallowedApps = const [],
+  }) async {
     try {
       await awaitWithTimeout(
         _channel.invokeMethod<void>('startVpn', {
           'configPath': configPath,
           'sessionId': sessionId,
+          'disallowedApps': disallowedApps,
         }),
         timeout: startTimeout,
         description: 'Mihomo VPN service start',

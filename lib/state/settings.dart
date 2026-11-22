@@ -30,6 +30,10 @@ class Settings {
   set schemeVariant(DynamicSchemeVariant v) =>
       _prefs.setInt('schemeVariant', v.index);
 
+  /// Id of the selected [CirrusThemePreset], or `custom` after manual edits.
+  String get themePreset => _prefs.getString('themePreset') ?? 'cirrus';
+  set themePreset(String v) => _prefs.setString('themePreset', v);
+
   int get mixedPort => _prefs.getInt('mixedPort') ?? 7890;
   set mixedPort(int v) => _prefs.setInt('mixedPort', v);
 

@@ -122,7 +122,12 @@ Map<String, dynamic> applyCoreOptions(
   cfg['secret'] = o.secret;
   cfg['unified-delay'] = true;
   cfg['tcp-concurrent'] = true;
-  cfg['find-process-mode'] = Platform.isAndroid ? 'strict' : 'off';
+  // PROCESS-NAME rules are only effective when the core looks up the owning
+  // process. Keep the cheap default unless the user actually configured bypass.
+  final hasBypass = o.bypassApps.isNotEmpty || o.bypassProcesses.isNotEmpty;
+  cfg['find-process-mode'] = Platform.isAndroid
+      ? 'strict'
+      : (hasBypass ? 'always' : 'strict');
   cfg['profile'] = {'store-selected': true, 'store-fake-ip': true};
 
   // Generate bypass rules for apps/processes

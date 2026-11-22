@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import '../../core/system_proxy.dart';
 import '../../core/routing_rules.dart';
 import '../../state/app_state.dart';
+import '../../state/theme_presets.dart';
 import 'experiment_lab_page.dart';
 import 'logs_page.dart';
 import '../theme.dart';
@@ -19,6 +20,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = AppScope.of(context);
     final s = state.settings;
+    final scheme = Theme.of(context).colorScheme;
     final sections = <Widget>[
       // Внешний вид
       _Section(
@@ -51,7 +53,41 @@ class SettingsPage extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          Text('Цвет', style: Theme.of(context).textTheme.titleSmall),
+          Text('Тема Cirrus', style: Theme.of(context).textTheme.titleSmall),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final preset in cirrusThemePresets)
+                ChoiceChip(
+                  avatar: CircleAvatar(
+                    radius: 8,
+                    backgroundColor: preset.swatch,
+                  ),
+                  label: Text(preset.name),
+                  selected:
+                      !s.systemColor && s.themePreset == preset.id,
+                  onSelected: (_) => state.applyThemePreset(preset.id),
+                ),
+              ChoiceChip(
+                avatar: CircleAvatar(
+                  radius: 8,
+                  backgroundColor: scheme.surfaceContainerHighest,
+                  child: Icon(
+                    Icons.palette_rounded,
+                    size: 12,
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                label: const Text('Своя'),
+                selected: s.systemColor || s.themePreset == customThemePresetId,
+                onSelected: (_) => state.markCustomTheme(),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text('Свой цвет', style: Theme.of(context).textTheme.titleSmall),
           const SizedBox(height: 10),
           Wrap(
             spacing: 10,
@@ -390,7 +426,7 @@ class SettingsPage extends StatelessWidget {
         title: 'О программе',
         children: [
           Text(
-            'Cirrus 0.1.2 — VPN-клиент на базе mihomo с дизайном Material You.',
+            'Cirrus 0.1.3 — VPN-клиент на базе mihomo с дизайном Material You.',
           ),
         ],
       ),

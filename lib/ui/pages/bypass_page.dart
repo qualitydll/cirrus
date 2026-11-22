@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/android_apps.dart';
+import '../../core/windows_apps.dart';
 import '../../state/app_state.dart';
 import '../widgets/common.dart';
 
@@ -18,7 +20,8 @@ class BypassPage extends StatelessWidget {
       children: [
         const PageHeader(
           title: 'Обход VPN',
-          subtitle: 'Выберите приложения для прямого доступа без VPN',
+          subtitle:
+              'Прямой доступ без VPN. Windows: нужен режим TUN; Android: приложения исключаются на уровне VPN.',
         ),
         Expanded(
           child: ListView(
@@ -44,107 +47,127 @@ class _AndroidBypassSection extends StatefulWidget {
 
 class _AndroidBypassSectionState extends State<_AndroidBypassSection> {
   final List<String> _selectedApps = [];
+  List<AndroidAppEntry> _apps = const [];
+  final Map<String, String> _appLabels = {};
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
     _selectedApps.addAll(widget.state.settings.androidBypassApps);
+    _refreshApps();
+  }
+
+  Future<void> _refreshApps() async {
+    final apps = await listInstalledAndroidApps();
+    if (!mounted) return;
+    setState(() {
+      _apps = apps;
+      _appLabels
+        ..clear()
+        ..addEntries(apps.map((app) => MapEntry(app.packageName, app.label)));
+    });
   }
 
   Future<void> _loadApps() async {
     setState(() => _isLoading = true);
-    // Simulate loading apps - in real implementation this would use
-    // platform channel to query Android PackageManager
-    await Future.delayed(const Duration(milliseconds: 500));
-    setState(() => _isLoading = false);
-    
-    // Show app selector dialog
+    if (_apps.isEmpty) await _refreshApps();
     if (!mounted) return;
+    setState(() => _isLoading = false);
     _showAppSelector();
   }
 
   void _showAppSelector() {
-    final commonApps = [
-      'com.android.chrome',
-      'com.whatsapp',
-      'com.instagram.android',
-      'com.facebook.katana',
-      'com.twitter.android',
-      'com.discord',
-      'com.tencent.mm',
-      'com.spotify.music',
-      'com.netflix.mediaclient',
-      'com.youtube',
-      'com.google.android.youtube',
-      'com.vkontakte.android',
-      'com.google.android.gm',
-      'com.slack',
-      'com.microsoft.teams',
-      'com.skype.raider',
-      'com.zoom.us',
-      'ru.yandex.mail',
-      'ru.yandex.disk',
-      'ru.yandex.taxi',
-      'ru.yandex.metro',
-      'ru.yandex.music',
-      'ru.yandex.browser',
-      'com.sberbankmobile',
-      'ru.tinkoff.mobile',
-      'ru.tcsbank.mb',
-      'com.vkontakte.bdev',
-      'ru.ozon.app.android',
-      'com.wildberries.ru',
-      'com.avito.android',
+    final known = _apps.map((app) => app.packageName).toSet();
+    final choices = <AndroidAppEntry>[
+      ..._apps,
+      for (final packageName in _selectedApps)
+        if (!known.contains(packageName))
+          AndroidAppEntry(packageName: packageName, label: packageName),
     ];
+    var query = '';
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Выберите приложения'),
-        content: SizedBox(
-          width: 500,
-          height: 400,
-          child: ListView.builder(
-            itemCount: commonApps.length,
-            itemBuilder: (context, index) {
-              final app = commonApps[index];
-              final isSelected = _selectedApps.contains(app);
-              return CheckboxListTile(
-                title: Text(_getAppName(app)),
-                subtitle: Text(app, style: const TextStyle(fontSize: 11)),
-                value: isSelected,
-                onChanged: (value) {
-                  setState(() {
-                    if (value == true) {
-                      _selectedApps.add(app);
-                    } else {
-                      _selectedApps.remove(app);
-                    }
-                  });
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final q = query.trim().toLowerCase();
+          final filtered = q.isEmpty
+              ? choices
+              : choices.where((app) {
+                  return app.label.toLowerCase().contains(q) ||
+                      app.packageName.toLowerCase().contains(q);
+                }).toList();
+          return AlertDialog(
+            title: const Text('Выберите приложения'),
+            content: SizedBox(
+              width: 560,
+              height: 480,
+              child: Column(
+                children: [
+                  TextField(
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search_rounded),
+                      hintText: 'Поиск приложений',
+                      isDense: true,
+                    ),
+                    onChanged: (value) => setDialogState(() => query = value),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('Ничего не найдено'))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final app = filtered[index];
+                              final isSelected = _selectedApps.contains(app.packageName);
+                              return CheckboxListTile(
+                                title: Text(app.label),
+                                subtitle: Text(
+                                  app.packageName,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                value: isSelected,
+                                onChanged: (value) {
+                                  setState(() {
+                                    if (value == true) {
+                                      _selectedApps.add(app.packageName);
+                                    } else {
+                                      _selectedApps.remove(app.packageName);
+                                    }
+                                  });
+                                  setDialogState(() {});
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  widget.state.setAndroidBypassApps(_selectedApps);
+                  Navigator.pop(dialogContext);
                 },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          FilledButton(
-            onPressed: () {
-              widget.state.setAndroidBypassApps(_selectedApps);
-              Navigator.pop(context);
-            },
-            child: const Text('Сохранить'),
-          ),
-        ],
+                child: const Text('Сохранить'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   String _getAppName(String packageName) {
+    final known = _appLabels[packageName];
+    if (known != null) return known;
     final nameMap = {
       'com.android.chrome': 'Chrome',
       'com.whatsapp': 'WhatsApp',
@@ -287,8 +310,12 @@ class _WindowsBypassSection extends StatelessWidget {
     );
   }
 
-  void _showProcessSelector(BuildContext context, AppState state) {
-    final commonProcesses = [
+  Future<void> _showProcessSelector(BuildContext context, AppState state) async {
+    final running = await listRunningWindowsApps();
+    if (!context.mounted) return;
+
+    final selected = <String>{...state.settings.windowsBypassProcesses};
+    final fallback = [
       'chrome.exe',
       'firefox.exe',
       'msedge.exe',
@@ -310,41 +337,111 @@ class _WindowsBypassSection extends StatelessWidget {
       'code.exe',
       'explorer.exe',
     ];
+    final base = running.isNotEmpty
+        ? running
+        : fallback
+            .map((process) => WindowsAppEntry(processName: process, title: process))
+            .toList();
+    final known = base.map((app) => app.processName.toLowerCase()).toSet();
+    final choices = <WindowsAppEntry>[
+      ...base,
+      for (final process in selected)
+        if (!known.contains(process.toLowerCase()))
+          WindowsAppEntry(processName: process, title: process),
+    ];
+    var query = '';
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Выберите процесс'),
-        content: SizedBox(
-          width: 500,
-          height: 400,
-          child: ListView.builder(
-            itemCount: commonProcesses.length,
-            itemBuilder: (context, index) {
-              final process = commonProcesses[index];
-              final isSelected = state.settings.windowsBypassProcesses.contains(process);
-              return CheckboxListTile(
-                title: Text(process),
-                value: isSelected,
-                onChanged: (value) {
-                  final processes = List<String>.of(state.settings.windowsBypassProcesses);
-                  if (value == true) {
-                    processes.add(process);
-                  } else {
-                    processes.remove(process);
-                  }
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final q = query.trim().toLowerCase();
+          final filtered = q.isEmpty
+              ? choices
+              : choices.where((app) {
+                  return app.title.toLowerCase().contains(q) ||
+                      app.processName.toLowerCase().contains(q);
+                }).toList();
+          return AlertDialog(
+            title: const Text('Выберите процесс'),
+            content: SizedBox(
+              width: 560,
+              height: 480,
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          decoration: const InputDecoration(
+                            prefixIcon: Icon(Icons.search_rounded),
+                            hintText: 'Поиск процессов',
+                            isDense: true,
+                          ),
+                          onChanged: (value) => setDialogState(() => query = value),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.folder_open_rounded),
+                        tooltip: 'Выбрать .exe',
+                        onPressed: () async {
+                          final exe = await pickWindowsExecutableName();
+                          if (exe != null && dialogContext.mounted) {
+                            setDialogState(() => selected.add(exe));
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: filtered.isEmpty
+                        ? const Center(child: Text('Ничего не найдено'))
+                        : ListView.builder(
+                            itemCount: filtered.length,
+                            itemBuilder: (context, index) {
+                              final app = filtered[index];
+                              final isSelected = selected.contains(app.processName);
+                              return CheckboxListTile(
+                                dense: true,
+                                title: Text(app.title),
+                                subtitle: Text(
+                                  app.processName,
+                                  style: const TextStyle(fontSize: 11),
+                                ),
+                                value: isSelected,
+                                onChanged: (value) {
+                                  setDialogState(() {
+                                    if (value == true) {
+                                      selected.add(app.processName);
+                                    } else {
+                                      selected.remove(app.processName);
+                                    }
+                                  });
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext),
+                child: const Text('Отмена'),
+              ),
+              FilledButton(
+                onPressed: () {
+                  final processes = selected.toList()..sort();
                   state.setWindowsBypassProcesses(processes);
+                  Navigator.pop(dialogContext);
                 },
-              );
-            },
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Закрыть'),
-          ),
-        ],
+                child: const Text('Сохранить'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
