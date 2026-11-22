@@ -13,7 +13,6 @@ import 'pages/profiles_page.dart';
 import 'pages/servers_page.dart';
 import 'pages/settings_page.dart';
 import 'widgets/aurora_background.dart';
-import 'widgets/cirrus_mark.dart';
 
 class Shell extends StatefulWidget {
   const Shell({super.key});
@@ -190,10 +189,7 @@ class _TitleBar extends StatelessWidget {
               child: Container(
                 alignment: Alignment.centerLeft,
                 padding: const EdgeInsets.only(left: 20),
-                child: CirrusMark(
-                  size: 18,
-                  lit: status == ConnStatus.connected,
-                ),
+                child: const SizedBox.shrink(),
               ),
             ),
           ),
